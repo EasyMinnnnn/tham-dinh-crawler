@@ -6,7 +6,7 @@ async def run():
         browser = await p.chromium.launch(headless=True)
         page = await browser.new_page()
 
-        url = "https://mof.gov.vn/bo-tai-chinh/..."  # Thay bằng link thật
+        url = "https://mof.gov.vn/bo-tai-chinh/danh-sach-tham-dinh-ve-gia/thong-bao-so-543tb-btc-ve-viec-dieu-chinh-thong-tin-ve-tham-dinh-vien-ve-gia-nam-2025"  # Thay bằng link thật
         await page.goto(url)
         print("Đã mở trang:", url)
 
