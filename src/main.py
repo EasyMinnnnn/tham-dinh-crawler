@@ -11,33 +11,41 @@ def main():
     res.encoding = "utf-8"
     soup = BeautifulSoup(res.text, "html.parser")
 
-    # Ví dụ: chọn tất cả thẻ chứa tiêu đề (tuỳ chỉnh selector phù hợp)
-    items = soup.select("div.news-list li")
+    # 2. Lấy tất cả thẻ <li> để debug thử
+    items = soup.find_all("li")
+    print("Tổng số items:", len(items))
+
     new_items = []
     for item in items:
-        title = item.get_text(strip=True)
-        link = item.find("a")["href"]
-        new_items.append({"title": title, "link": link})
+        a_tag = item.find("a")
+        if a_tag and "href" in a_tag.attrs:
+            title = a_tag.get_text(strip=True)
+            link = a_tag["href"]
+            print("Title:", title, "| Link:", link)
+            new_items.append({"title": title, "link": link})
 
-    # 2. Kết nối Google Sheets
+    # 3. Kết nối Google Sheets
     scope = ["https://spreadsheets.google.com/feeds",
              "https://www.googleapis.com/auth/drive"]
     creds_json = os.environ["GOOGLE_CREDENTIALS_JSON"]
-    creds_dict = eval(creds_json)   # Biến môi trường chứa JSON
+    creds_dict = eval(creds_json)
     creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
     client = gspread.authorize(creds)
 
     sheet = client.open_by_key(os.environ["GOOGLE_SHEET_ID"]).sheet1
 
-    # 3. Đọc danh sách link đã có
-    existing = sheet.col_values(2)  # Giả sử cột 2 lưu link
+    # 4. Đọc danh sách link đã có
+    existing = sheet.col_values(2)  # Cột 2 chứa link
 
-    # 4. Ghi item mới
+    # 5. Ghi các item mới vào Sheet
+    count_new = 0
     for item in new_items:
         if item["link"] not in existing:
             sheet.append_row([item["title"], item["link"]])
             print("Đã thêm:", item["title"])
+            count_new += 1
+
+    print("Tổng số dòng mới đã thêm:", count_new)
 
 if __name__ == "__main__":
     main()
-
