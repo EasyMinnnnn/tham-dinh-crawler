@@ -1,31 +1,26 @@
-import asyncio
 from playwright.async_api import async_playwright
+import asyncio
 
-async def main():
-    url = "https://mof.gov.vn/bo-tai-chinh/danh-sach-tham-dinh-ve-gia/thong-bao-so-543tb-btc-ve-viec-dieu-chinh-thong-tin-ve-tham-dinh-vien-ve-gia-nam-2025"
-
+async def run():
     async with async_playwright() as p:
-        browser = await p.chromium.launch(headless=True)
+        browser = await p.chromium.launch()
         page = await browser.new_page()
+        await page.goto("https://mof.gov.vn/bo-tai-chinh/danh-sach-tham-dinh-ve-gia/thong-bao-so-543tb-btc-ve-viec-dieu-chinh-thong-tin-ve-tham-dinh-vien-ve-gia-nam-2025")
 
-        # Tải trang
-        await page.goto(url)
+        # Nếu nút download là button, selector ví dụ như sau:
+        # await page.click("button[aria-label='Download']")
 
-        # Chờ nút tải PDF xuất hiện
-        download_button = await page.wait_for_selector('button[aria-label="Download"]', timeout=10000)
+        # Hoặc nếu là link tải, dùng selector phù hợp:
+        # await page.click("a:has-text('Tải về')")
 
-        # Bắt sự kiện download
-        async with page.expect_download() as download_info:
-            await download_button.click()
+        # Hoặc in ra tất cả link để kiểm tra:
+        links = await page.query_selector_all("a")
+        for link in links:
+            text = await link.inner_text()
+            href = await link.get_attribute("href")
+            print(f"Link: {text} - {href}")
 
-        download = await download_info.value
-        path = await download.path()
-        print("File tải về tạm:", path)
-
-        # Lưu file
-        await download.save_as("thongbao.pdf")
-        print("Đã lưu file thongbao.pdf thành công.")
-
+        await asyncio.sleep(5)
         await browser.close()
 
-asyncio.run(main())
+asyncio.run(run())
