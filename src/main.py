@@ -1,35 +1,33 @@
 import os
-import requests
-from bs4 import BeautifulSoup
+import asyncio
+from playwright.async_api import async_playwright
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 
-def main():
-    # 1. Crawl website
-    url = "https://mof.gov.vn/bo-tai-chinh/danh-sach-tham-dinh-ve-gia"
-    res = requests.get(url)
-    res.encoding = "utf-8"
+async def main():
+    # 1. Dùng Playwright để render JS và lấy HTML
+    async with async_playwright() as p:
+        browser = await p.chromium.launch()
+        page = await browser.new_page()
+        await page.goto("https://mof.gov.vn/bo-tai-chinh/danh-sach-tham-dinh-ve-gia")
+        await page.wait_for_timeout(5000)  # đợi 5 giây load JS
+        
+        html = await page.content()
+        print("HTML Length:", len(html))
+        
+        # Lấy tất cả thẻ <a> trong trang
+        links = await page.query_selector_all("a")
+        new_items = []
+        for link in links:
+            title = await link.inner_text()
+            href = await link.get_attribute("href")
+            if href and "/bo-tai-chinh/" in href:
+                print("Title:", title.strip(), "| Link:", href.strip())
+                new_items.append({"title": title.strip(), "link": href.strip()})
+        
+        await browser.close()
 
-    print("----------- NỘI DUNG HTML BẮT ĐẦU -----------")
-    print(res.text[:3000])  # In 3000 ký tự đầu tiên cho đỡ dài
-    print("----------- NỘI DUNG HTML KẾT THÚC -----------")
-
-    soup = BeautifulSoup(res.text, "html.parser")
-
-    # 2. Lấy tất cả thẻ <li>
-    items = soup.find_all("li")
-    print("Tổng số items:", len(items))
-
-    new_items = []
-    for item in items:
-        a_tag = item.find("a")
-        if a_tag and "href" in a_tag.attrs:
-            title = a_tag.get_text(strip=True)
-            link = a_tag["href"]
-            print("Title:", title, "| Link:", link)
-            new_items.append({"title": title, "link": link})
-
-    # 3. Kết nối Google Sheets
+    # 2. Ghi ra Google Sheet
     scope = ["https://spreadsheets.google.com/feeds",
              "https://www.googleapis.com/auth/drive"]
     creds_json = os.environ["GOOGLE_CREDENTIALS_JSON"]
@@ -38,19 +36,15 @@ def main():
     client = gspread.authorize(creds)
 
     sheet = client.open_by_key(os.environ["GOOGLE_SHEET_ID"]).sheet1
+    existing = sheet.col_values(2)
 
-    # 4. Đọc danh sách link đã có
-    existing = sheet.col_values(2)  # Cột 2 chứa link
-
-    # 5. Ghi các item mới vào Sheet
     count_new = 0
     for item in new_items:
         if item["link"] not in existing:
             sheet.append_row([item["title"], item["link"]])
             print("Đã thêm:", item["title"])
             count_new += 1
-
-    print("Tổng số dòng mới đã thêm:", count_new)
+    print("Tổng số dòng mới:", count_new)
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())
