@@ -17,45 +17,44 @@ jobs:
 
       - name: Install system dependencies for Playwright
         run: |
-        sudo apt-get update
-      sudo apt-get install -y \
-      libnss3 \
-      libatk1.0-0 \
-      libatk-bridge2.0-0 \
-      libcups2 \
-      libdrm2 \
-      libxkbcommon0 \
-      libgbm1 \
-      libgtk-3-0 \
-      libasound2t64 \
-      libxcomposite1 \
-      libxdamage1 \
-      libxrandr2 \
-      libpango-1.0-0 \
-      libcairo2 \
-      libatspi2.0-0 \
-      libxcb1 \
-      libx11-xcb1 \
-      libxext6 \
-      libxfixes3 \
-      libwayland-client0 \
-      libwayland-cursor0 \
-      libwayland-egl1 \
-      libxrender1 \
-      libxi6 \
-      libxtst6 \
-      libjpeg-dev \
-      libwebp-dev \
-      libopus0 \
-      libvpx9 \
-      libevent-2.1-7 \
-      libwoff1 \
-      libharfbuzz-icu0 \
-      libsecret-1-0 \
-      libhyphen0 \
-      libmanette-0.2-0 \
-      libgles2
-
+          sudo apt-get update
+          sudo apt-get install -y \
+            libnss3 \
+            libatk1.0-0 \
+            libatk-bridge2.0-0 \
+            libcups2 \
+            libdrm2 \
+            libxkbcommon0 \
+            libgbm1 \
+            libgtk-3-0 \
+            libasound2t64 \
+            libxcomposite1 \
+            libxdamage1 \
+            libxrandr2 \
+            libpango-1.0-0 \
+            libcairo2 \
+            libatspi2.0-0 \
+            libxcb1 \
+            libx11-xcb1 \
+            libxext6 \
+            libxfixes3 \
+            libwayland-client0 \
+            libwayland-cursor0 \
+            libwayland-egl1 \
+            libxrender1 \
+            libxi6 \
+            libxtst6 \
+            libjpeg-dev \
+            libwebp-dev \
+            libopus0 \
+            libvpx9 \
+            libevent-2.1-7 \
+            libwoff1 \
+            libharfbuzz-icu0 \
+            libsecret-1-0 \
+            libhyphen0 \
+            libmanette-0.2-0 \
+            libgles2
 
       - name: Install dependencies
         run: |
@@ -64,4 +63,3 @@ jobs:
 
       - name: Run download_pdf.py
         run: python download_pdf.py
-
