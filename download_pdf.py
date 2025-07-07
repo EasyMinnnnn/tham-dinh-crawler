@@ -6,14 +6,15 @@ async def run():
         browser = await p.chromium.launch(headless=True)
         page = await browser.new_page()
 
-        # URL trang chi tiết thông báo
-        await page.goto("https://mof.gov.vn/bo-tai-chinh/...")  # <-- Thay URL thật
+        url = "https://mof.gov.vn/bo-tai-chinh/..."  # Thay bằng link thật
+        await page.goto(url)
+        print("Đã mở trang:", url)
 
-        # Chờ nút download xuất hiện
-        download_button = await page.wait_for_selector('button[title="Download"]')
+        # Chờ nút xuất hiện (KHÔNG cần iframe)
+        download_button = await page.wait_for_selector('button#download[title="Download"]')
+        print("Đã tìm thấy nút download, đang click...")
 
-        # Click nút download
-        print("Đang click nút download...")
+        # Click và chờ tải
         async with page.expect_download() as download_info:
             await download_button.click()
         download = await download_info.value
