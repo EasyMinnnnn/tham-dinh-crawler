@@ -5,3 +5,4 @@ google-auth
 pdf2image
 pytesseract
 oauth2client
+playwright
