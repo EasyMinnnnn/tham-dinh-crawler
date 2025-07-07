@@ -9,9 +9,14 @@ def main():
     url = "https://mof.gov.vn/bo-tai-chinh/danh-sach-tham-dinh-ve-gia"
     res = requests.get(url)
     res.encoding = "utf-8"
+
+    print("----------- NỘI DUNG HTML BẮT ĐẦU -----------")
+    print(res.text[:3000])  # In 3000 ký tự đầu tiên cho đỡ dài
+    print("----------- NỘI DUNG HTML KẾT THÚC -----------")
+
     soup = BeautifulSoup(res.text, "html.parser")
 
-    # 2. Lấy tất cả thẻ <li> để debug thử
+    # 2. Lấy tất cả thẻ <li>
     items = soup.find_all("li")
     print("Tổng số items:", len(items))
 
