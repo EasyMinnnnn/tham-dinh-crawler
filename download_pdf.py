@@ -3,24 +3,26 @@ import asyncio
 
 async def run():
     async with async_playwright() as p:
-        browser = await p.chromium.launch()
+        browser = await p.chromium.launch(headless=True)
         page = await browser.new_page()
-        await page.goto("https://mof.gov.vn/bo-tai-chinh/danh-sach-tham-dinh-ve-gia/thong-bao-so-543tb-btc-ve-viec-dieu-chinh-thong-tin-ve-tham-dinh-vien-ve-gia-nam-2025")
 
-        # Nếu nút download là button, selector ví dụ như sau:
-        # await page.click("button[aria-label='Download']")
+        # URL trang chi tiết thông báo
+        await page.goto("https://mof.gov.vn/bo-tai-chinh/...")   # <== Đổi thành URL thật
 
-        # Hoặc nếu là link tải, dùng selector phù hợp:
-        # await page.click("a:has-text('Tải về')")
+        # Tìm nút download theo class
+        download_button = await page.wait_for_selector("button.download")
 
-        # Hoặc in ra tất cả link để kiểm tra:
-        links = await page.query_selector_all("a")
-        for link in links:
-            text = await link.inner_text()
-            href = await link.get_attribute("href")
-            print(f"Link: {text} - {href}")
+        # Click để tải file
+        print("Đang click nút download...")
+        async with page.expect_download() as download_info:
+            await download_button.click()
+        download = await download_info.value
 
-        await asyncio.sleep(5)
+        # Lưu file về workspace
+        save_path = "downloaded_file.pdf"
+        await download.save_as(save_path)
+        print(f"Đã tải file về: {save_path}")
+
         await browser.close()
 
 asyncio.run(run())
