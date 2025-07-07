@@ -58,4 +58,9 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install
+          pip install -r requirements.txt
+          playwright install
+
+      - name: Run download_pdf.py
+        run: python download_pdf.py
+
