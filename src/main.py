@@ -15,13 +15,16 @@ async def main():
         html = await page.content()
         print("HTML Length:", len(html))
         
-        # Lấy tất cả thẻ <a> trong trang
+        # Lấy tất cả thẻ <a>
         links = await page.query_selector_all("a")
         new_items = []
         for link in links:
             title = await link.inner_text()
             href = await link.get_attribute("href")
-            if href and "/bo-tai-chinh/" in href:
+            if (
+                href 
+                and href.startswith("/bo-tai-chinh/danh-sach-tham-dinh-ve-gia/")
+            ):
                 print("Title:", title.strip(), "| Link:", href.strip())
                 new_items.append({"title": title.strip(), "link": href.strip()})
         
