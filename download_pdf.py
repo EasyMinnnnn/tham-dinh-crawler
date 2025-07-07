@@ -6,26 +6,19 @@ async def run():
         browser = await p.chromium.launch(headless=True)
         page = await browser.new_page()
 
-        # Trang chứa PDF
-        await page.goto("https://mof.gov.vn/bo-tai-chinh/...")  # Đổi URL thật
+        # URL trang chi tiết thông báo
+        await page.goto("https://mof.gov.vn/bo-tai-chinh/...")  # <-- Thay URL thật
 
-        # Chờ iframe xuất hiện
-        frame_element = await page.wait_for_selector("iframe")
-        frame = await frame_element.content_frame()
+        # Chờ nút download xuất hiện
+        download_button = await page.wait_for_selector('button[title="Download"]')
 
-        # Kiểm tra frame tồn tại
-        if frame is None:
-            raise Exception("Không tìm thấy iframe chứa nội dung!")
-
-        # Chờ nút download trong frame
-        download_button = await frame.wait_for_selector("button.download")
-
-        # Click để tải file
+        # Click nút download
         print("Đang click nút download...")
         async with page.expect_download() as download_info:
             await download_button.click()
         download = await download_info.value
 
+        # Lưu file
         save_path = "downloaded_file.pdf"
         await download.save_as(save_path)
         print(f"Đã tải file về: {save_path}")
