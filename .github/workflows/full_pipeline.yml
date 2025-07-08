@@ -1,41 +1,36 @@
-name: Full PDF OCR Pipeline
-
-on:
-  workflow_dispatch:  # Cho phép bạn chạy thủ công từ GitHub Actions UI
-
 jobs:
-  run-pipeline:
+  build:
     runs-on: ubuntu-latest
-
-    env:
-      GOOGLE_APPLICATION_CREDENTIALS_JSON: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS_JSON }}
-      GOOGLE_SHEET_ID: ${{ secrets.GOOGLE_SHEET_ID }}
-
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v3
 
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: "3.10"
+          python-version: 3.10
 
-      - name: Install dependencies
+      - name: Install system dependencies
         run: |
-          pip install -r requirements.txt
+          sudo apt-get update
+          sudo apt-get install -y libasound2 libxshmfence1 libnss3 libatk1.0-0 libcups2 \
+                                  libxcomposite1 libxrandr2 libxdamage1 libgbm1 libxkbcommon0 \
+                                  libgtk-3-0 libxss1 libgdk-pixbuf2.0-0 libx11-xcb1
 
-      - name: Install Playwright browsers
-        run: |
-          python -m playwright install --with-deps
+      - name: Install Python dependencies
+        run: pip install -r requirements.txt
 
-      - name: Run download PDF
-        run: |
-          python download_pdf.py
+      - name: Install Playwright Browsers
+        run: python -m playwright install --with-deps
 
-      - name: OCR to JSON (Document AI)
-        run: |
-          python ocr_to_json.py
+      - name: Run Download PDF
+        run: python download_pdf.py
+
+      - name: Run OCR with Document AI
+        run: python src/ocr_to_json.py
 
       - name: Extract to Google Sheet
-        run: |
-          python extract_to_sheet.py
+        run: python extract_to_sheet.py
+        env:
+          GOOGLE_CREDENTIALS_JSON: ${{ secrets.GOOGLE_CREDENTIALS_JSON }}
+          GOOGLE_SHEET_ID: ${{ secrets.GOOGLE_SHEET_ID }}
+          GOOGLE_APPLICATION_CREDENTIALS_JSON: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS_JSON }}
