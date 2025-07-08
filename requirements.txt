@@ -1,10 +1,7 @@
-requests
-beautifulsoup4
-gspread
-google-auth
-pdf2image
-pytesseract
-oauth2client
-playwright
-gspread
-google-auth
+playwright==1.42.0
+gspread==5.12.0
+oauth2client==4.1.3
+google-auth==2.29.0
+google-cloud-documentai==2.20.0
+requests==2.31.0
+beautifulsoup4==4.12.3
