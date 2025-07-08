@@ -6,3 +6,5 @@ pdf2image
 pytesseract
 oauth2client
 playwright
+gspread
+google-auth
