@@ -1,15 +1,22 @@
-jobs:
-  build:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
+name: Full Thẩm Định Pipeline
 
-      - name: Set up Python
+on:
+  workflow_dispatch:
+
+jobs:
+  pipeline:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Set up Python 3.10
         uses: actions/setup-python@v4
         with:
           python-version: 3.10
 
-      - name: Install system dependencies
+      - name: Install system dependencies (for Playwright Chromium)
         run: |
           sudo apt-get update
           sudo apt-get install -y libasound2 libxshmfence1 libnss3 libatk1.0-0 libcups2 \
@@ -22,15 +29,16 @@ jobs:
       - name: Install Playwright Browsers
         run: python -m playwright install --with-deps
 
-      - name: Run Download PDF
+      - name: Run Step 1 - Download PDF
         run: python download_pdf.py
 
-      - name: Run OCR with Document AI
+      - name: Run Step 2 - OCR with Document AI
         run: python src/ocr_to_json.py
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS_JSON: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS_JSON }}
 
-      - name: Extract to Google Sheet
+      - name: Run Step 3 - Extract to Google Sheets
         run: python extract_to_sheet.py
         env:
           GOOGLE_CREDENTIALS_JSON: ${{ secrets.GOOGLE_CREDENTIALS_JSON }}
           GOOGLE_SHEET_ID: ${{ secrets.GOOGLE_SHEET_ID }}
-          GOOGLE_APPLICATION_CREDENTIALS_JSON: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS_JSON }}
