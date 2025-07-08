@@ -5,14 +5,19 @@ from google.oauth2.service_account import Credentials
 
 # Thiết lập Google Sheet API
 SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
-CREDS = Credentials.from_service_account_file("credentials.json", scopes=SCOPES)
+
+# Lấy credentials từ biến môi trường (dạng 1 dòng JSON)
+creds_info = json.loads(os.environ["GOOGLE_CREDENTIALS_JSON"])
+CREDS = Credentials.from_service_account_info(creds_info, scopes=SCOPES)
+
 gc = gspread.authorize(CREDS)
 
-# Mở Google Sheet và chọn "Trang tính 2"
-spreadsheet = gc.open("Tham Dinh Sheet")
-worksheet = spreadsheet.worksheet("Trang tính 2")
+# Truy cập sheet theo ID (không dùng .sheet1 nữa)
+sheet_id = os.environ["GOOGLE_SHEET_ID"]
+sh = gc.open_by_key(sheet_id)
+worksheet = sh.worksheet("Trang tính2")  # Hoặc "Sheet2" tùy bạn
 
-# Đọc file JSON từ thư mục outputs
+# Đọc file JSON từ thư mục output
 def extract_data_from_json(json_path):
     with open(json_path, "r", encoding="utf-8") as f:
         data = json.load(f)
@@ -27,11 +32,12 @@ def extract_data_from_json(json_path):
                         block.get("textBlock", {}).get("text", "")
                         for block in cell.get("blocks", [])
                     ]
-                    row_text.append(" ".join(texts).strip())
+                    row_text.append(" ".join(texts))
                 all_text.append(row_text)
     return all_text
 
-# Duyệt qua tất cả file JSON trong thư mục outputs và ghi vào sheet
+# Trích và ghi vào Sheet
+import os
 for file in os.listdir("outputs"):
     if file.endswith(".json"):
         rows = extract_data_from_json(os.path.join("outputs", file))
