@@ -1,14 +1,14 @@
 name: Full PDF OCR Pipeline
 
 on:
-  workflow_dispatch:
+  workflow_dispatch:  # Cho phép bạn chạy thủ công từ GitHub Actions UI
 
 jobs:
   run-pipeline:
     runs-on: ubuntu-latest
+
     env:
       GOOGLE_APPLICATION_CREDENTIALS_JSON: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS_JSON }}
-      GOOGLE_CREDENTIALS_JSON: ${{ secrets.GOOGLE_CREDENTIALS_JSON }}
       GOOGLE_SHEET_ID: ${{ secrets.GOOGLE_SHEET_ID }}
 
     steps:
@@ -23,6 +23,10 @@ jobs:
       - name: Install dependencies
         run: |
           pip install -r requirements.txt
+
+      - name: Install Playwright browsers
+        run: |
+          python -m playwright install --with-deps
 
       - name: Run download PDF
         run: |
