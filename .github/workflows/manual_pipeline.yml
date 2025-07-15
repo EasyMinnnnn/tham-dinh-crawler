@@ -11,7 +11,7 @@ jobs:
       GOOGLE_CREDENTIALS_JSON: ${{ secrets.GOOGLE_CREDENTIALS_JSON }}
       GOOGLE_APPLICATION_CREDENTIALS_JSON: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS_JSON }}
       GOOGLE_SHEET_ID: ${{ secrets.GOOGLE_SHEET_ID }}
-      SHEET2_NAME: "Trang tính2"  # Hoặc thay bằng tên sheet bạn dùng
+      SHEET2_NAME: "Trang tính2"  # Hoặc tên sheet bạn đang dùng
 
     steps:
     - name: 🧾 Checkout code
@@ -22,10 +22,10 @@ jobs:
       with:
         python-version: "3.10"
 
-    - name: 📦 Install dependencies
+    - name: 📦 Install Python dependencies + Playwright
       run: |
         pip install -r requirements.txt
-        python -m playwright install
+        python -m playwright install --with-deps  # 👈 Cài đầy đủ (chromium + dependencies)
 
     - name: 🚀 Run pipeline
       run: python run_pipeline.py
