@@ -12,9 +12,9 @@ SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
 OUTPUT_DIR = "outputs"
 SHEET2_NAME = os.getenv("SHEET2_NAME", "Trang tính2")
 
-# ======== 1. RUN CRAWLER (main.py) ========
-print("🚀 Đang crawl link mới...")
-subprocess.run(["python", "src/main.py"])
+# ======== 1. RUN CRAWLER (main.py dùng Playwright) ========
+print("🚀 Đang crawl link mới từ Playwright...")
+subprocess.run(["python", "main.py"], check=True)
 
 # ======== 2. LẤY LINK MỚI TRONG SHEET1 ========
 print("📄 Đang đọc Google Sheet...")
@@ -24,7 +24,7 @@ sheet = gc.open_by_key(SHEET_ID).sheet1
 
 titles = sheet.col_values(1)
 links = sheet.col_values(2)
-latest_links = list(zip(titles, links))[:5]  # ⏳ Giới hạn 5 link mới nhất để demo/test
+latest_links = list(zip(titles, links))[:5]  # ⏳ Giới hạn 5 link mới nhất
 
 print(f"🔗 Sẽ xử lý {len(latest_links)} link mới")
 
