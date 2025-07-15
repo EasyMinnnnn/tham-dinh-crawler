@@ -14,7 +14,7 @@ SHEET2_NAME = os.getenv("SHEET2_NAME", "Trang tính2")
 
 # ======== 1. RUN CRAWLER (main.py) ========
 print("🚀 Đang crawl link mới...")
-subprocess.run(["python", "main.py"])
+subprocess.run(["python", "src/main.py"])
 
 # ======== 2. LẤY LINK MỚI TRONG SHEET1 ========
 print("📄 Đang đọc Google Sheet...")
