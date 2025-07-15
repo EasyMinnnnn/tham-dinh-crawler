@@ -1,60 +1,51 @@
 import os
-import asyncio
-from playwright.async_api import async_playwright
+import json
+import requests
+from bs4 import BeautifulSoup
 import gspread
-from oauth2client.service_account import ServiceAccountCredentials
+from google.oauth2.service_account import Credentials
 
-async def main():
-    # 1. Crawl dữ liệu
-    async with async_playwright() as p:
-        browser = await p.chromium.launch()
-        page = await browser.new_page()
-        await page.goto("https://mof.gov.vn/bo-tai-chinh/danh-sach-tham-dinh-ve-gia")
-        await page.wait_for_timeout(5000)
+def crawl_new_links():
+    url = "https://mof.gov.vn/bo-tai-chinh/danh-sach-tham-dinh-ve-gia"
+    res = requests.get(url, timeout=10)
+    soup = BeautifulSoup(res.text, "html.parser")
 
-        html = await page.content()
-        print("HTML Length:", len(html))
+    base = "https://mof.gov.vn"
+    found = []
 
-        links = await page.query_selector_all("a")
-        new_items = []
-        for link in links:
-            title = await link.inner_text()
-            href = await link.get_attribute("href")
-            if (
-                href 
-                and href.startswith("/bo-tai-chinh/danh-sach-tham-dinh-ve-gia/")
-            ):
-                print("Title:", title.strip(), "| Link:", href.strip())
-                new_items.append({"title": title.strip(), "link": href.strip()})
-        
-        await browser.close()
+    for a in soup.find_all("a", href=True):
+        href = a["href"].strip()
+        title = a.get_text(strip=True)
+        if href.startswith("/bo-tai-chinh/danh-sach-tham-dinh-ve-gia/") and title:
+            full_url = base + href
+            found.append({"title": title, "link": full_url})
 
-    # 2. Kết nối Google Sheet
-    scope = ["https://spreadsheets.google.com/feeds",
-             "https://www.googleapis.com/auth/drive"]
+    print(f"🔍 Đã tìm thấy {len(found)} link phù hợp.")
+    return found
+
+def write_to_google_sheet(new_items):
+    # Xác thực Google Sheets
     creds_json = os.environ["GOOGLE_CREDENTIALS_JSON"]
-    creds_dict = eval(creds_json)
-    creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
+    creds_dict = json.loads(creds_json)
+    scope = ["https://www.googleapis.com/auth/spreadsheets"]
+    creds = Credentials.from_service_account_info(creds_dict, scopes=scope)
     client = gspread.authorize(creds)
 
     sheet = client.open_by_key(os.environ["GOOGLE_SHEET_ID"]).sheet1
-
-    # 3. Lấy danh sách link đã có
     existing_links = set(sheet.col_values(2))
-    print("Đã có", len(existing_links), "link.")
 
-    # 4. Thêm mới lên đầu
     count_new = 0
-    for item in reversed(new_items):  # reversed để giữ thứ tự mới nhất trên cùng
+    for item in reversed(new_items):
         if item["link"] not in existing_links:
-            # Chèn dòng trống lên đầu
-            sheet.insert_row([], 1)
-            # Ghi dữ liệu vào dòng 1
-            sheet.update('A1', [[item["title"], item["link"]]])
-            print("Đã thêm:", item["title"])
+            sheet.insert_row([item["title"], item["link"]], 1)
+            print("✅ Đã thêm:", item["title"])
             count_new += 1
 
-    print("Tổng số dòng mới:", count_new)
+    print("🧾 Tổng số dòng mới:", count_new)
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    try:
+        items = crawl_new_links()
+        write_to_google_sheet(items)
+    except Exception as e:
+        print("❌ Lỗi khi xử lý:", e)
