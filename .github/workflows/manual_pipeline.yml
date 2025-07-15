@@ -1,0 +1,31 @@
+name: 🛠️ Run Pipeline Manually
+
+on:
+  workflow_dispatch:  # Cho phép chạy tay thủ công từ GitHub UI
+
+jobs:
+  run-pipeline:
+    runs-on: ubuntu-latest
+
+    env:
+      GOOGLE_CREDENTIALS_JSON: ${{ secrets.GOOGLE_CREDENTIALS_JSON }}
+      GOOGLE_APPLICATION_CREDENTIALS_JSON: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS_JSON }}
+      GOOGLE_SHEET_ID: ${{ secrets.GOOGLE_SHEET_ID }}
+      SHEET2_NAME: "Trang tính2"  # Hoặc thay bằng tên sheet bạn dùng
+
+    steps:
+    - name: 🧾 Checkout code
+      uses: actions/checkout@v4
+
+    - name: 🐍 Setup Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.10"
+
+    - name: 📦 Install dependencies
+      run: |
+        pip install -r requirements.txt
+        python -m playwright install
+
+    - name: 🚀 Run pipeline
+      run: python run_pipeline.py
