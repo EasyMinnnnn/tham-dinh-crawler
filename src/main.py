@@ -16,6 +16,8 @@ def crawl_new_links():
     for a in soup.find_all("a", href=True):
         href = a["href"].strip()
         title = a.get_text(strip=True)
+
+        # Lọc đúng link con và có tiêu đề
         if href.startswith("/bo-tai-chinh/danh-sach-tham-dinh-ve-gia/") and title:
             full_url = base + href
             found.append({"title": title, "link": full_url})
@@ -31,11 +33,14 @@ def write_to_google_sheet(new_items):
     creds = Credentials.from_service_account_info(creds_dict, scopes=scope)
     client = gspread.authorize(creds)
 
+    # Mở sheet đầu tiên (sheet1)
     sheet = client.open_by_key(os.environ["GOOGLE_SHEET_ID"]).sheet1
+
+    # Lấy danh sách link đã có (cột B)
     existing_links = set(sheet.col_values(2))
 
     count_new = 0
-    for item in reversed(new_items):
+    for item in reversed(new_items):  # Giữ thứ tự mới nhất lên đầu
         if item["link"] not in existing_links:
             sheet.insert_row([item["title"], item["link"]], 1)
             print("✅ Đã thêm:", item["title"])
