@@ -1,23 +1,22 @@
-import json
 import os
+import json
 import gspread
 from google.oauth2.service_account import Credentials
 
 # Thiết lập Google Sheet API
 SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
 
-# Lấy credentials từ biến môi trường (dạng 1 dòng JSON)
+# Nhận credentials từ biến môi trường
 creds_info = json.loads(os.environ["GOOGLE_CREDENTIALS_JSON"])
 CREDS = Credentials.from_service_account_info(creds_info, scopes=SCOPES)
-
 gc = gspread.authorize(CREDS)
 
-# Truy cập sheet theo ID (không dùng .sheet1 nữa)
+# Lấy thông tin sheet
 sheet_id = os.environ["GOOGLE_SHEET_ID"]
-sh = gc.open_by_key(sheet_id)
-worksheet = sh.worksheet("Trang tính2")  # Hoặc "Sheet2" tùy bạn
+sheet_name = os.getenv("SHEET2_NAME", "Trang tính2")
+worksheet = gc.open_by_key(sheet_id).worksheet(sheet_name)
 
-# Đọc file JSON từ thư mục output
+# Trích dữ liệu từ file JSON OCR
 def extract_data_from_json(json_path):
     with open(json_path, "r", encoding="utf-8") as f:
         data = json.load(f)
@@ -36,10 +35,23 @@ def extract_data_from_json(json_path):
                 all_text.append(row_text)
     return all_text
 
-# Trích và ghi vào Sheet
-import os
-for file in os.listdir("outputs"):
+# Quét thư mục và ghi dữ liệu
+json_dir = "outputs"
+processed = 0
+
+for file in os.listdir(json_dir):
     if file.endswith(".json"):
-        rows = extract_data_from_json(os.path.join("outputs", file))
-        for row in rows:
-            worksheet.append_row(row)
+        file_path = os.path.join(json_dir, file)
+        try:
+            rows = extract_data_from_json(file_path)
+            if rows:
+                worksheet.append_rows(rows)
+                print(f"✅ Đã ghi {len(rows)} dòng từ: {file}")
+            else:
+                print(f"⚠️ Không có bảng nào trong file: {file}")
+            os.remove(file_path)  # Xóa file đã xử lý
+            processed += 1
+        except Exception as e:
+            print(f"❌ Lỗi xử lý {file}: {e}")
+
+print(f"\n📊 Tổng số file đã xử lý: {processed}")
