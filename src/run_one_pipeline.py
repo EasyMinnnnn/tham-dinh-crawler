@@ -1,10 +1,7 @@
-import sys, os
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
 import asyncio
 import subprocess
-from src.download_pdf import run as download_pdf
-from src.utils import print_step
+from .download_pdf import run as download_pdf
+from .utils import print_step
 
 async def main():
     print_step("📦 BASE64_PDF_END")
