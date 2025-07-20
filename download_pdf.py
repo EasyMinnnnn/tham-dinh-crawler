@@ -15,26 +15,29 @@ def download_latest_pdf(base_url="https://mof.gov.vn", relative_link=""):
         full_url = urljoin(base_url, relative_link)
         print(f"🌐 Đang mở trang: {full_url}")
         page.goto(full_url, timeout=60000)
-
-        page.wait_for_timeout(2000)
+        page.wait_for_timeout(3000)
 
         try:
-            print("📥 Đang tìm nút download...")
-            download_button = page.locator(
-                "xpath=/html/body/div[1]/div/main/div/div[1]/div/div[2]/div[4]/div/form/div/div/div[2]/div[3]/div/div/div[2]/button[4]"
-            )
-            if download_button.is_visible():
-                with page.expect_download(timeout=15000) as download_info:
-                    download_button.click()
-                download = download_info.value
-                download_path = os.path.join(output_dir, download.suggested_filename)
-                download.save_as(download_path)
-                print(f"✅ Đã tải file về: {download_path}")
-                return download_path
-            else:
-                print("❌ Nút download không hiển thị.")
+            print("📥 Đang dò nút download...")
+            buttons = page.locator("button")
+            count = buttons.count()
+
+            for i in range(count):
+                btn = buttons.nth(i)
+                text = btn.inner_text().strip()
+                if "Tải" in text or "Download" in text:
+                    print(f"🔘 Thử click nút: '{text}'")
+                    with page.expect_download(timeout=15000) as download_info:
+                        btn.click()
+                    download = download_info.value
+                    file_path = os.path.join(output_dir, download.suggested_filename)
+                    download.save_as(file_path)
+                    print(f"✅ Đã tải file về: {file_path}")
+                    return file_path
+
+            print("❌ Không tìm thấy nút nào chứa từ 'Tải'.")
         except Exception as e:
-            print(f"❌ Không tìm thấy nút download hoặc lỗi tải: {e}")
+            print(f"❌ Lỗi khi tải file: {e}")
         finally:
             print("📁 Kiểm tra thư mục outputs:")
             print(os.listdir(output_dir))
