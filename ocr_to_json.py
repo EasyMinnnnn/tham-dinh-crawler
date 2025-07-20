@@ -1,15 +1,16 @@
 import os
+import sys
 import json
-import traceback
 from google.cloud import documentai_v1 as documentai
 from google.oauth2 import service_account
 from google.api_core.exceptions import GoogleAPICallError
 
-# ✅ Dùng đúng biến đã có
+# 🔐 Lấy credentials từ biến môi trường
 credentials_json = os.environ["GOOGLE_CREDENTIALS_JSON"]
 credentials_dict = json.loads(credentials_json)
 credentials = service_account.Credentials.from_service_account_info(credentials_dict)
 
+# ⚙️ Khởi tạo Document AI client
 project_id = os.environ["GOOGLE_PROJECT_ID"]
 location = "us"
 processor_id = os.environ["GOOGLE_PROCESSOR_ID"]
@@ -17,45 +18,50 @@ processor_id = os.environ["GOOGLE_PROCESSOR_ID"]
 client = documentai.DocumentProcessorServiceClient(credentials=credentials)
 name = f"projects/{project_id}/locations/{location}/processors/{processor_id}"
 
-input_dir = "outputs"
-processed = 0
+def process_file(pdf_path):
+    json_path = pdf_path.replace(".pdf", ".json")
+    print(f"🧠 OCR file: {pdf_path}")
+    try:
+        with open(pdf_path, "rb") as f:
+            pdf_bytes = f.read()
 
-for filename in os.listdir(input_dir):
-    if filename.endswith(".pdf"):
-        pdf_path = os.path.join(input_dir, filename)
-        json_path = pdf_path.replace(".pdf", ".json")
+        raw_document = documentai.RawDocument(content=pdf_bytes, mime_type="application/pdf")
+        request = {"name": name, "raw_document": raw_document}
+        result = client.process_document(request=request)
 
-        print(f"🧠 OCR file: {filename}")
-        try:
-            with open(pdf_path, "rb") as f:
-                pdf_bytes = f.read()
+        document = result.document
+        if not document.pages:
+            print(f"⚠️ Không có trang nào được OCR từ: {pdf_path}")
+            return False
 
-            raw_document = documentai.RawDocument(
-                content=pdf_bytes, mime_type="application/pdf"
-            )
+        document_dict = document._pb.__class__.to_dict(document._pb)
+        with open(json_path, "w", encoding="utf-8") as f:
+            json.dump(document_dict, f, ensure_ascii=False)
 
-            request = {"name": name, "raw_document": raw_document}
-            result = client.process_document(request=request)
+        print(f"✅ Đã lưu file JSON: {json_path}")
+        os.remove(pdf_path)
+        return True
 
-            document = result.document
-            if not document.pages:
-                print(f"⚠️ Không có trang nào được OCR từ: {filename}")
-                continue
+    except GoogleAPICallError as api_error:
+        print(f"❌ Lỗi từ Google API: {api_error}")
+    except Exception as e:
+        print(f"❌ Lỗi khi OCR {pdf_path}: {e}")
+    return False
 
-            document_dict = document._pb.__class__.to_dict(document._pb)
-
-            with open(json_path, "w", encoding="utf-8") as f:
-                json.dump(document_dict, f, ensure_ascii=False)
-
-            print(f"✅ Đã lưu file JSON: {json_path}")
-            os.remove(pdf_path)
-            processed += 1
-
-        except GoogleAPICallError as api_error:
-            print(f"❌ Lỗi từ Google API: {api_error}")
-            traceback.print_exc()
-        except Exception as e:
-            print(f"❌ Lỗi khác khi OCR {filename}: {e}")
-            traceback.print_exc()
-
-print(f"\n📄 Tổng số file OCR thành công: {processed}")
+if __name__ == "__main__":
+    if len(sys.argv) > 1:
+        pdf_file = sys.argv[1]
+        if not os.path.exists(pdf_file):
+            print(f"❌ File không tồn tại: {pdf_file}")
+            sys.exit(1)
+        process_file(pdf_file)
+    else:
+        # Chạy toàn bộ thư mục nếu không có đối số
+        input_dir = "outputs"
+        files = [f for f in os.listdir(input_dir) if f.endswith(".pdf")]
+        success = 0
+        for f in files:
+            path = os.path.join(input_dir, f)
+            if process_file(path):
+                success += 1
+        print(f"\n📄 Tổng số file OCR thành công: {success}")
