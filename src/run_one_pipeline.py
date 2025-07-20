@@ -13,42 +13,37 @@ async def main():
         await page.goto(base_url, timeout=30000)
         print("🌐 Đã vào trang danh sách.")
 
-        # Chờ DOM tải xong
+        # Chờ trang tải xong
         await page.wait_for_timeout(5000)
 
-        # Lưu lại HTML để debug khi cần
+        # Lưu HTML để kiểm tra sau
         html = await page.content()
         with open("mof_debug.html", "w", encoding="utf-8") as f:
             f.write(html)
 
-        # Tìm các link bắt đầu bằng đường dẫn chi tiết
-        link_elements = await page.query_selector_all('a[href^="/bo-tai-chinh/danh-sach-tham-dinh-ve-gia/"]')
-        if not link_elements:
-            print("❌ Không tìm thấy bất kỳ thẻ <a> nào phù hợp.")
-            await browser.close()
-            return
+        # Lấy toàn bộ thẻ <a> trên trang
+        link_elements = await page.query_selector_all("a")
+        print(f"🔎 Tổng số thẻ <a>: {len(link_elements)}")
 
-        # Bỏ qua 3 link đầu (thường là tiêu đề hoặc phân loại)
-        valid_links = link_elements[3:]
-
-        first_item = None
-        for link in valid_links:
+        valid_links = []
+        for link in link_elements:
             href = await link.get_attribute("href")
-            if href and href.count("/") > 4:
-                first_item = link
-                break
+            text = await link.inner_text()
+            if href:
+                print(f"↪️ {text.strip()} --> {href.strip()}")
+            if href and href.startswith("/bo-tai-chinh/danh-sach-tham-dinh-ve-gia/") and href.count("/") > 4:
+                valid_links.append(href)
 
-        if not first_item:
+        if not valid_links:
             print("❌ Không tìm thấy bài viết hợp lệ.")
             await browser.close()
             return
 
-        detail_url = await first_item.get_attribute("href")
+        detail_url = valid_links[0]
         if not detail_url.startswith("http"):
             detail_url = "https://mof.gov.vn" + detail_url
 
         print("🔗 Link chi tiết:", detail_url)
-
         await browser.close()
 
     # Bước 1: Download PDF
