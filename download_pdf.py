@@ -1,4 +1,5 @@
 import os
+import base64
 from urllib.parse import urljoin
 from playwright.sync_api import sync_playwright
 
@@ -40,17 +41,17 @@ def download_latest_pdf(base_url="https://mof.gov.vn", relative_link=""):
     return None
 
 if __name__ == "__main__":
-    download_latest_pdf(
+    # Link cụ thể để test thủ công
+    pdf_path = download_latest_pdf(
         relative_link="/bo-tai-chinh/danh-sach-tham-dinh-ve-gia/quyet-dinh-so-2320tb-btc-ve-viec-thu-hoi-giay-chung-nhan-du-dieu-kien-kinh-doanh-dich-vu-tham-dinh-gia"
     )
-# ... đoạn sau khi tải PDF và đã lưu vào pdf_path
-import base64
 
-try:
-    with open(pdf_path, "rb") as f:
-        encoded = base64.b64encode(f.read()).decode("utf-8")
-        print("📦 BASE64_PDF_BEGIN")
-        print(encoded)
-        print("📦 BASE64_PDF_END")
-except Exception as e:
-    print(f"❌ Không thể đọc file PDF để in base64: {e}")
+    if pdf_path:
+        try:
+            with open(pdf_path, "rb") as f:
+                encoded = base64.b64encode(f.read()).decode("utf-8")
+                print("📦 BASE64_PDF_BEGIN")
+                print(encoded)
+                print("📦 BASE64_PDF_END")
+        except Exception as e:
+            print(f"❌ Không thể đọc file PDF để in base64: {e}")
