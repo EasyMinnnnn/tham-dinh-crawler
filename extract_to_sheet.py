@@ -13,13 +13,17 @@ gc = gspread.authorize(CREDS)
 
 # Lấy thông tin sheet
 sheet_id = os.environ["GOOGLE_SHEET_ID"]
-sheet_name = os.getenv("SHEET2_NAME", "Trang tính2")
+sheet_name = os.getenv("SHEET_NAME", "Trang tính1")  # ✅ Đổi tên tại đây nếu cần
 worksheet = gc.open_by_key(sheet_id).worksheet(sheet_name)
 
-# Trích dữ liệu từ file JSON OCR
+# Hàm trích dữ liệu từ JSON OCR
 def extract_data_from_json(json_path):
     with open(json_path, "r", encoding="utf-8") as f:
-        data = json.load(f)
+        try:
+            data = json.load(f)
+        except json.JSONDecodeError as e:
+            print(f"❌ JSON lỗi cú pháp: {json_path} – {e}")
+            return []
 
     all_text = []
     for page in data.get("pages", []):
@@ -31,27 +35,31 @@ def extract_data_from_json(json_path):
                         block.get("textBlock", {}).get("text", "")
                         for block in cell.get("blocks", [])
                     ]
-                    row_text.append(" ".join(texts))
-                all_text.append(row_text)
+                    row_text.append(" ".join(texts).strip())
+                if any(cell for cell in row_text):
+                    all_text.append(row_text)
     return all_text
 
-# Quét thư mục và ghi dữ liệu
+# Quét thư mục outputs và xử lý file .json
 json_dir = "outputs"
 processed = 0
 
 for file in os.listdir(json_dir):
     if file.endswith(".json"):
         file_path = os.path.join(json_dir, file)
+        print(f"📄 Đang xử lý file: {file}")
         try:
             rows = extract_data_from_json(file_path)
             if rows:
-                worksheet.append_rows(rows)
-                print(f"✅ Đã ghi {len(rows)} dòng từ: {file}")
+                preview = rows[0]
+                print(f"👀 Dòng đầu tiên preview: {preview}")
+                worksheet.append_rows(rows, value_input_option="RAW")
+                print(f"✅ Đã ghi {len(rows)} dòng vào Google Sheet.")
             else:
-                print(f"⚠️ Không có bảng nào trong file: {file}")
-            os.remove(file_path)  # Xóa file đã xử lý
+                print(f"⚠️ Không có dữ liệu bảng trong file: {file}")
+            os.remove(file_path)
             processed += 1
         except Exception as e:
-            print(f"❌ Lỗi xử lý {file}: {e}")
+            print(f"❌ Lỗi khi xử lý {file}: {e}")
 
-print(f"\n📊 Tổng số file đã xử lý: {processed}")
+print(f"\n📊 Tổng số file đã xử lý thành công: {processed}")
