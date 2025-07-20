@@ -18,24 +18,30 @@ def download_latest_pdf(base_url="https://mof.gov.vn", relative_link=""):
         page.wait_for_timeout(3000)
 
         try:
-            print("📥 Đang dò nút download...")
-            buttons = page.locator("button")
-            count = buttons.count()
+            print("📥 Đang dò các phần tử có thể là nút download...")
+
+            # Dò toàn bộ các thẻ có thể click được
+            candidates = page.locator("a, button, div, span")
+            count = candidates.count()
 
             for i in range(count):
-                btn = buttons.nth(i)
-                text = btn.inner_text().strip()
-                if "Tải" in text or "Download" in text:
-                    print(f"🔘 Thử click nút: '{text}'")
+                el = candidates.nth(i)
+                try:
+                    text = el.inner_text().strip().lower()
+                except:
+                    continue  # Bỏ qua nếu không đọc được
+
+                if "tải" in text or ".pdf" in text:
+                    print(f"🔘 Thử click: '{text}'")
                     with page.expect_download(timeout=15000) as download_info:
-                        btn.click()
+                        el.click()
                     download = download_info.value
                     file_path = os.path.join(output_dir, download.suggested_filename)
                     download.save_as(file_path)
                     print(f"✅ Đã tải file về: {file_path}")
                     return file_path
 
-            print("❌ Không tìm thấy nút nào chứa từ 'Tải'.")
+            print("❌ Không tìm thấy nút nào có chứa 'Tải' hoặc '.pdf'.")
         except Exception as e:
             print(f"❌ Lỗi khi tải file: {e}")
         finally:
