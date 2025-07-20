@@ -5,28 +5,20 @@ from google.cloud import documentai_v1 as documentai
 from google.oauth2 import service_account
 from google.api_core.exceptions import GoogleAPICallError
 
-# 🔐 Đọc nội dung JSON credentials từ biến môi trường
-credentials_json = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS")
-if not credentials_json:
-    print("❌ Thiếu biến môi trường GOOGLE_APPLICATION_CREDENTIALS (dạng nội dung JSON)")
-    sys.exit(1)
-
+# 🔐 Đọc credentials từ file key.json
+CREDENTIAL_FILE = "key.json"
 try:
-    credentials_dict = json.loads(credentials_json)
-except json.JSONDecodeError as e:
+    with open(CREDENTIAL_FILE, "r", encoding="utf-8") as f:
+        credentials_dict = json.load(f)
+    credentials = service_account.Credentials.from_service_account_info(credentials_dict)
+except Exception as e:
     print(f"❌ GOOGLE_APPLICATION_CREDENTIALS không phải JSON hợp lệ: {e}")
     sys.exit(1)
 
-credentials = service_account.Credentials.from_service_account_info(credentials_dict)
-
-# ⚙️ Khởi tạo client
-project_id = os.environ.get("GOOGLE_PROJECT_ID")
-processor_id = os.environ.get("GOOGLE_PROCESSOR_ID")
-location = os.environ.get("GOOGLE_LOCATION", "us")
-
-if not project_id or not processor_id:
-    print("❌ Thiếu GOOGLE_PROJECT_ID hoặc GOOGLE_PROCESSOR_ID")
-    sys.exit(1)
+# ⚙️ Khởi tạo Document AI client
+project_id = os.environ["GOOGLE_PROJECT_ID"]
+location = "us"
+processor_id = os.environ["GOOGLE_PROCESSOR_ID"]
 
 client = documentai.DocumentProcessorServiceClient(credentials=credentials)
 name = f"projects/{project_id}/locations/{location}/processors/{processor_id}"
@@ -38,10 +30,7 @@ def process_file(pdf_path):
         with open(pdf_path, "rb") as f:
             pdf_bytes = f.read()
 
-        raw_document = documentai.RawDocument(
-            content=pdf_bytes,
-            mime_type="application/pdf"
-        )
+        raw_document = documentai.RawDocument(content=pdf_bytes, mime_type="application/pdf")
         request = {"name": name, "raw_document": raw_document}
         result = client.process_document(request=request)
 
@@ -50,7 +39,6 @@ def process_file(pdf_path):
             print(f"⚠️ Không có trang nào được OCR từ: {pdf_path}")
             return False
 
-        # Chuyển protobuf sang dict
         document_dict = document._pb.__class__.to_dict(document._pb)
         with open(json_path, "w", encoding="utf-8") as f:
             json.dump(document_dict, f, ensure_ascii=False)
