@@ -23,16 +23,15 @@ jobs:
           pip install -r requirements.txt
           playwright install chromium
 
-      - name: 🗂️ Create credentials file
+      - name: 🗂️ Create key.json from base64 secret
         run: |
-          echo "${{ secrets.GOOGLE_CREDENTIALS_JSON }}" > key.json
-          printf "%s" "${{ secrets.GOOGLE_CREDENTIALS_JSON }}" > $GITHUB_WORKSPACE/key.json
+          echo "${{ secrets.GOOGLE_CREDENTIALS_JSON }}" | base64 -d > $GITHUB_WORKSPACE/key.json
         shell: bash
 
-      - name: 🐛 Debug credential file (optional)
+      - name: 🐛 Debug key.json
         run: |
           echo "First 10 lines of key.json:"
-          head -n 10 $GITHUB_WORKSPACE/key.json || echo "⚠️ File rỗng hoặc lỗi!"
+          head -n 10 $GITHUB_WORKSPACE/key.json || echo "⚠️ File rỗng!"
         shell: bash
 
       - name: ⚙️ Run run_one_pipeline.py
