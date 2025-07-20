@@ -1,5 +1,4 @@
 import os
-import time
 from urllib.parse import urljoin
 from playwright.sync_api import sync_playwright
 
@@ -18,32 +17,20 @@ def download_latest_pdf(base_url="https://mof.gov.vn", relative_link=""):
         page.wait_for_timeout(3000)
 
         try:
-            print("📥 Đang dò các phần tử có thể là nút download...")
+            print("📥 Đang tìm nút download theo ID '#download'...")
+            page.wait_for_selector("#download", timeout=5000)
 
-            # Dò toàn bộ các thẻ có thể click được
-            candidates = page.locator("a, button, div, span")
-            count = candidates.count()
+            with page.expect_download(timeout=10000) as download_info:
+                page.click("#download")
 
-            for i in range(count):
-                el = candidates.nth(i)
-                try:
-                    text = el.inner_text().strip().lower()
-                except:
-                    continue  # Bỏ qua nếu không đọc được
+            download = download_info.value
+            file_path = os.path.join(output_dir, download.suggested_filename)
+            download.save_as(file_path)
+            print(f"✅ Đã tải file về: {file_path}")
+            return file_path
 
-                if "tải" in text or ".pdf" in text:
-                    print(f"🔘 Thử click: '{text}'")
-                    with page.expect_download(timeout=15000) as download_info:
-                        el.click()
-                    download = download_info.value
-                    file_path = os.path.join(output_dir, download.suggested_filename)
-                    download.save_as(file_path)
-                    print(f"✅ Đã tải file về: {file_path}")
-                    return file_path
-
-            print("❌ Không tìm thấy nút nào có chứa 'Tải' hoặc '.pdf'.")
         except Exception as e:
-            print(f"❌ Lỗi khi tải file: {e}")
+            print(f"❌ Không thể tải file: {e}")
         finally:
             print("📁 Kiểm tra thư mục outputs:")
             print(os.listdir(output_dir))
