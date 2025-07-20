@@ -6,7 +6,7 @@ from google.oauth2 import service_account
 from google.api_core.exceptions import GoogleAPICallError
 
 # 🔐 Lấy credentials từ biến môi trường
-credentials_json = os.environ["GOOGLE_CREDENTIALS_JSON"]
+credentials_json = os.environ["GOOGLE_APPLICATION_CREDENTIALS"]
 credentials_dict = json.loads(credentials_json)
 credentials = service_account.Credentials.from_service_account_info(credentials_dict)
 
