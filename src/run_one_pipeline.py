@@ -6,6 +6,7 @@ from playwright.async_api import async_playwright
 
 async def main():
     base_url = "https://mof.gov.vn/bo-tai-chinh/danh-sach-tham-dinh-ve-gia"
+    domain = "https://mof.gov.vn"
 
     async with async_playwright() as p:
         browser = await p.chromium.launch(headless=True)
@@ -13,15 +14,9 @@ async def main():
         await page.goto(base_url, timeout=30000)
         print("🌐 Đã vào trang danh sách.")
 
-        # Chờ trang tải xong
         await page.wait_for_timeout(5000)
 
-        # Lưu HTML để kiểm tra sau
-        html = await page.content()
-        with open("mof_debug.html", "w", encoding="utf-8") as f:
-            f.write(html)
-
-        # Lấy toàn bộ thẻ <a> trên trang
+        # Lấy tất cả các thẻ <a>
         link_elements = await page.query_selector_all("a")
         print(f"🔎 Tổng số thẻ <a>: {len(link_elements)}")
 
@@ -30,8 +25,9 @@ async def main():
             href = await link.get_attribute("href")
             text = await link.inner_text()
             if href:
-                print(f"↪️ {text.strip()} --> {href.strip()}")
-            if href and href.startswith("/bo-tai-chinh/danh-sach-tham-dinh-ve-gia/") and href.count("/") > 4:
+                href = href.strip()
+                print(f"↪️ {text.strip()} --> {href}")
+            if href.startswith("/bo-tai-chinh/danh-sach-tham-dinh-ve-gia/"):
                 valid_links.append(href)
 
         if not valid_links:
@@ -39,11 +35,11 @@ async def main():
             await browser.close()
             return
 
-        detail_url = valid_links[0]
-        if not detail_url.startswith("http"):
-            detail_url = "https://mof.gov.vn" + detail_url
-
+        # Nối domain vào link đầu tiên
+        relative_path = valid_links[0]
+        detail_url = domain + relative_path
         print("🔗 Link chi tiết:", detail_url)
+
         await browser.close()
 
     # Bước 1: Download PDF
