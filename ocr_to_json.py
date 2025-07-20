@@ -1,60 +1,50 @@
 import os
-import sys
 import json
-from google.cloud import documentai_v1 as documentai
-from google.protobuf.json_format import MessageToJson
-from google.api_core.client_options import ClientOptions
+from google.cloud import documentai_v1beta3 as documentai
 
-def parse_pdf_with_docai(pdf_path):
-    # --- Config ---
-    project_id = "geocoding-api-464306"
-    location = "eu"  # phải khớp với processor
-    processor_id = "72cb2ba0beaa1f9d"
-    mime_type = "application/pdf"
+# Thiết lập client
+project_id = os.environ["GOOGLE_PROJECT_ID"]
+location = "us"  # hoặc "asia-southeast1"
+processor_id = os.environ["GOOGLE_PROCESSOR_ID"]
 
-    # --- Load credentials từ biến môi trường ---
-    creds_json = os.environ["GOOGLE_APPLICATION_CREDENTIALS_JSON"]
-    creds_dict = json.loads(creds_json)
+client = documentai.DocumentUnderstandingServiceClient()
+name = f"projects/{project_id}/locations/{location}/processors/{processor_id}"
 
-    # --- Setup endpoint theo vùng ---
-    endpoint = f"{location}-documentai.googleapis.com"
-    opts = ClientOptions(api_endpoint=endpoint)
+input_dir = "outputs"
+output_dir = "outputs"
+os.makedirs(output_dir, exist_ok=True)
 
-    client = documentai.DocumentProcessorServiceClient(client_options=opts)
-    name = f"projects/{project_id}/locations/{location}/processors/{processor_id}"
+processed = 0
 
-    # --- Đọc nội dung file PDF ---
-    with open(pdf_path, "rb") as f:
-        pdf_content = f.read()
+for file_name in os.listdir(input_dir):
+    if file_name.endswith(".pdf"):
+        pdf_path = os.path.join(input_dir, file_name)
+        json_path = pdf_path.replace(".pdf", ".json")
 
-    raw_document = documentai.RawDocument(content=pdf_content, mime_type=mime_type)
-    request = documentai.ProcessRequest(name=name, raw_document=raw_document)
+        print(f"🧠 OCR file: {file_name}")
+        with open(pdf_path, "rb") as f:
+            pdf_bytes = f.read()
 
-    print("📄 Đang gửi tài liệu lên Document AI...")
-    result = client.process_document(request=request)
-    return result.document
+        raw_document = documentai.RawDocument(content=pdf_bytes, mime_type="application/pdf")
 
-if __name__ == "__main__":
-    if len(sys.argv) != 2:
-        print("⚠️ Cách dùng: python ocr_to_json.py outputs/tenfile.pdf")
-        sys.exit(1)
+        try:
+            result = client.process_document(
+                request={"name": name, "raw_document": raw_document}
+            )
+            document = result.document
 
-    pdf_path = sys.argv[1]
-    if not os.path.exists(pdf_path):
-        print("❌ File không tồn tại:", pdf_path)
-        sys.exit(1)
+            if not document.pages:
+                print(f"⚠️ Không có trang nào được OCR từ: {file_name}")
+                continue
 
-    os.makedirs("outputs", exist_ok=True)
+            with open(json_path, "w", encoding="utf-8") as f:
+                json.dump(document._pb.__class__.to_dict(document._pb), f, ensure_ascii=False)
 
-    try:
-        document = parse_pdf_with_docai(pdf_path)
+            print(f"✅ Đã OCR xong: {json_path}")
+            os.remove(pdf_path)  # cleanup
+            processed += 1
 
-        json_name = os.path.splitext(os.path.basename(pdf_path))[0] + ".json"
-        json_path = os.path.join("outputs", json_name)
+        except Exception as e:
+            print(f"❌ Lỗi OCR {file_name}: {e}")
 
-        with open(json_path, "w", encoding="utf-8") as f:
-            f.write(MessageToJson(document))
-
-        print(f"✅ Đã lưu kết quả OCR vào: {json_path}")
-    except Exception as e:
-        print("❌ Lỗi khi OCR:", e)
+print(f"\n📄 Tổng số file OCR thành công: {processed}")
