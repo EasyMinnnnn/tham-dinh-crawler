@@ -1,71 +1,28 @@
 import asyncio
 import os
 import subprocess
-from pathlib import Path
-from playwright.async_api import async_playwright
+from src.download_pdf import run as download_pdf
+from src.extract_to_sheet import run as extract_to_sheet
 
 async def main():
-    base_url = "https://mof.gov.vn/bo-tai-chinh/danh-sach-tham-dinh-ve-gia"
-    domain = "https://mof.gov.vn"
+    print("🌐 Đang crawl link PDF...")
+    latest_pdf = await download_pdf(only_latest=True)
 
-    async with async_playwright() as p:
-        browser = await p.chromium.launch(headless=True)
-        page = await browser.new_page()
-        await page.goto(base_url, timeout=30000)
-        print("🌐 Đã vào trang danh sách.")
-
-        await page.wait_for_timeout(5000)
-
-        # Lấy tất cả các thẻ <a>
-        link_elements = await page.query_selector_all("a")
-        print(f"🔎 Tổng số thẻ <a>: {len(link_elements)}")
-
-        valid_links = []
-        for link in link_elements:
-            href = await link.get_attribute("href")
-            text = await link.inner_text()
-            if href:
-                href = href.strip()
-                print(f"↪️ {text.strip()} --> {href}")
-            if href.startswith("/bo-tai-chinh/danh-sach-tham-dinh-ve-gia/"):
-                valid_links.append(href)
-
-        if not valid_links:
-            print("❌ Không tìm thấy bài viết hợp lệ.")
-            await browser.close()
-            return
-
-        # Nối domain vào link đầu tiên
-        relative_path = valid_links[0]
-        detail_url = domain + relative_path
-        print("🔗 Link chi tiết:", detail_url)
-
-        await browser.close()
-
-    # Bước 1: Download PDF
-    print("📥 Đang tải PDF...")
-    subprocess.run(["python", "download_pdf.py", detail_url], check=True)
-
-    # Tìm file PDF mới nhất trong thư mục outputs/
-    output_dir = Path("outputs")
-    pdf_files = list(output_dir.glob("*.pdf"))
-    if not pdf_files:
-        print("❌ Không tìm thấy file PDF sau khi tải.")
+    if not latest_pdf:
+        print("❌ Không tìm thấy PDF mới.")
         return
 
-    latest_pdf = max(pdf_files, key=os.path.getmtime)
-    print("📄 PDF mới nhất:", latest_pdf)
-
-    # Bước 2: OCR file đó
+    print(f"📄 PDF mới nhất: {latest_pdf}")
     print("🧠 Đang OCR...")
-    subprocess.run(["python", "ocr_to_json.py", str(latest_pdf)], check=True)
 
-    # Bước 3: Extract vào Google Sheet
-    json_file = str(latest_pdf).replace(".pdf", ".json")
-    print("📊 Đang extract dữ liệu sang Google Sheet...")
-    subprocess.run(["python", "extract_to_sheet.py", json_file], check=True)
+    try:
+        subprocess.run(["python", "ocr_to_json.py", str(latest_pdf)], check=True, env=os.environ)
+    except subprocess.CalledProcessError as e:
+        print(f"❌ OCR thất bại: {e}")
+        return
 
-    print("✅ Hoàn tất pipeline cho dòng đầu tiên.")
+    print("📊 Đang extract JSON vào Google Sheet...")
+    await extract_to_sheet(file_path=latest_pdf.replace(".pdf", ".json"))
 
 if __name__ == "__main__":
     asyncio.run(main())
