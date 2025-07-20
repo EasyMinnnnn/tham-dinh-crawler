@@ -14,15 +14,12 @@ async def main():
         await page.goto(base_url, timeout=30000)
         print("🌐 Đã vào trang danh sách.")
 
-        # Chờ trang tải xong
         await page.wait_for_timeout(5000)
 
-        # Lưu HTML để kiểm tra sau
         html = await page.content()
         with open("mof_debug.html", "w", encoding="utf-8") as f:
             f.write(html)
 
-        # Lấy toàn bộ thẻ <a> trên trang
         link_elements = await page.query_selector_all("a")
         print(f"🔎 Tổng số thẻ <a>: {len(link_elements)}")
 
@@ -32,17 +29,16 @@ async def main():
             text = await link.inner_text()
             if href:
                 print(f"↪️ {text.strip()} --> {href.strip()}")
-            if href and href.startswith("/bo-tai-chinh/danh-sach-tham-dinh-ve-gia/"):
                 href = href.strip()
-                valid_links.append(href)
+                if href.startswith("/bo-tai-chinh/danh-sach-tham-dinh-ve-gia/"):
+                    valid_links.append(href)
 
         if not valid_links:
             print("❌ Không tìm thấy bài viết hợp lệ.")
             await browser.close()
             return
 
-        relative_path = valid_links[0]
-        detail_url = domain + relative_path
+        detail_url = domain + valid_links[0]
         print("🔗 Link chi tiết:", detail_url)
 
         await browser.close()
@@ -51,7 +47,7 @@ async def main():
     print("📥 Đang tải PDF...")
     subprocess.run(["python", "download_pdf.py", detail_url], check=True)
 
-    # Tìm file PDF mới nhất trong thư mục outputs/
+    # Tìm file PDF mới nhất
     output_dir = Path("outputs")
     pdf_files = list(output_dir.glob("*.pdf"))
     if not pdf_files:
@@ -61,11 +57,11 @@ async def main():
     latest_pdf = max(pdf_files, key=os.path.getmtime)
     print("📄 PDF mới nhất:", latest_pdf)
 
-    # Bước 2: OCR file đó
+    # Bước 2: OCR
     print("🧠 Đang OCR...")
     subprocess.run(["python", "ocr_to_json.py", str(latest_pdf)], check=True)
 
-    # Bước 3: Extract vào Google Sheet
+    # Bước 3: Extract
     json_file = str(latest_pdf).replace(".pdf", ".json")
     print("📊 Đang extract dữ liệu sang Google Sheet...")
     subprocess.run(["python", "extract_to_sheet.py", json_file], check=True)
