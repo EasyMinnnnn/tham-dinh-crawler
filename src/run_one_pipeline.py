@@ -14,15 +14,12 @@ async def main():
         await page.goto(base_url, timeout=30000)
         print("🌐 Đã vào trang danh sách.")
 
-        # Chờ trang tải xong
         await page.wait_for_timeout(5000)
 
-        # Lưu HTML để debug
         html = await page.content()
         with open("mof_debug.html", "w", encoding="utf-8") as f:
             f.write(html)
 
-        # Lấy tất cả thẻ <a>
         link_elements = await page.query_selector_all("a")
         print(f"🔎 Tổng số thẻ <a>: {len(link_elements)}")
 
@@ -32,7 +29,8 @@ async def main():
             text = await link.inner_text()
             if href:
                 print(f"↪️ {text.strip()} --> {href.strip()}")
-            if href and href.startswith("/bo-tai-chinh/danh-sach-tham-dinh-ve-gia/") and href.count("/") > 4:
+            # ❗ ĐÃ SỬA: bỏ điều kiện count("/")
+            if href and href.startswith("/bo-tai-chinh/danh-sach-tham-dinh-ve-gia/"):
                 href = href.strip()
                 valid_links.append(href)
 
@@ -47,11 +45,9 @@ async def main():
 
         await browser.close()
 
-    # Bước 1: Download PDF
     print("📥 Đang tải PDF...")
     subprocess.run(["python", "download_pdf.py", detail_url], check=True)
 
-    # Tìm file PDF mới nhất trong outputs/
     output_dir = Path("outputs")
     pdf_files = list(output_dir.glob("*.pdf"))
     if not pdf_files:
@@ -61,7 +57,6 @@ async def main():
     latest_pdf = max(pdf_files, key=os.path.getmtime)
     print("📄 PDF mới nhất:", latest_pdf)
 
-    # Bước 2: OCR file đó
     print("🧠 Đang OCR...")
     try:
         subprocess.run(["python", "ocr_to_json.py", str(latest_pdf)], check=True)
@@ -69,7 +64,6 @@ async def main():
         print(f"❌ Lỗi khi chạy OCR: {e}")
         return
 
-    # Bước 3: Extract vào Google Sheet
     json_file = str(latest_pdf).replace(".pdf", ".json")
     print("📊 Đang extract dữ liệu sang Google Sheet...")
     try:
