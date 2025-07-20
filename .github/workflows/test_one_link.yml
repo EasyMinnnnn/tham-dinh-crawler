@@ -23,9 +23,9 @@ jobs:
           pip install -r requirements.txt
           playwright install chromium
 
-      - name: 🗂️ Create key.json from base64 secret
+      - name: 🗂️ Tạo key.json từ GOOGLE_CREDENTIALS_JSON base64 (nếu cần dùng file)
         run: |
-          echo "${{ secrets.GOOGLE_CREDENTIALS_JSON }}" | base64 -d > $GITHUB_WORKSPACE/key.json
+          echo "${{ secrets.GOOGLE_CREDENTIALS_JSON }}" | base64 --decode > $GITHUB_WORKSPACE/key.json
         shell: bash
 
       - name: 🐛 Debug key.json
@@ -34,10 +34,10 @@ jobs:
           head -n 10 $GITHUB_WORKSPACE/key.json || echo "⚠️ File rỗng!"
         shell: bash
 
-      - name: ⚙️ Run run_one_pipeline.py
+      - name: ⚙️ Chạy run_one_pipeline.py
         env:
-          GOOGLE_APPLICATION_CREDENTIALS: ${{ github.workspace }}/key.json
-          GOOGLE_CREDENTIALS_JSON: ${{ secrets.GOOGLE_CREDENTIALS_JSON }}
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ github.workspace }}/key.json  # Dành cho Document AI
+          GOOGLE_CREDENTIALS_JSON: ${{ secrets.GOOGLE_CREDENTIALS_JSON }}   # Dành cho gspread
           GOOGLE_SHEET_ID: ${{ secrets.GOOGLE_SHEET_ID }}
           GOOGLE_PROJECT_ID: ${{ secrets.GOOGLE_PROJECT_ID }}
           GOOGLE_PROCESSOR_ID: ${{ secrets.GOOGLE_PROCESSOR_ID }}
