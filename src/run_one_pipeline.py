@@ -14,12 +14,15 @@ async def main():
         await page.goto(base_url, timeout=30000)
         print("🌐 Đã vào trang danh sách.")
 
+        # Chờ trang tải xong
         await page.wait_for_timeout(5000)
 
+        # Lưu HTML để debug
         html = await page.content()
         with open("mof_debug.html", "w", encoding="utf-8") as f:
             f.write(html)
 
+        # Lấy tất cả thẻ <a>
         link_elements = await page.query_selector_all("a")
         print(f"🔎 Tổng số thẻ <a>: {len(link_elements)}")
 
@@ -29,16 +32,17 @@ async def main():
             text = await link.inner_text()
             if href:
                 print(f"↪️ {text.strip()} --> {href.strip()}")
+            if href and href.startswith("/bo-tai-chinh/danh-sach-tham-dinh-ve-gia/") and href.count("/") > 4:
                 href = href.strip()
-                if href.startswith("/bo-tai-chinh/danh-sach-tham-dinh-ve-gia/"):
-                    valid_links.append(href)
+                valid_links.append(href)
 
         if not valid_links:
             print("❌ Không tìm thấy bài viết hợp lệ.")
             await browser.close()
             return
 
-        detail_url = domain + valid_links[0]
+        relative_path = valid_links[0]
+        detail_url = domain + relative_path
         print("🔗 Link chi tiết:", detail_url)
 
         await browser.close()
@@ -47,7 +51,7 @@ async def main():
     print("📥 Đang tải PDF...")
     subprocess.run(["python", "download_pdf.py", detail_url], check=True)
 
-    # Tìm file PDF mới nhất
+    # Tìm file PDF mới nhất trong outputs/
     output_dir = Path("outputs")
     pdf_files = list(output_dir.glob("*.pdf"))
     if not pdf_files:
@@ -57,14 +61,22 @@ async def main():
     latest_pdf = max(pdf_files, key=os.path.getmtime)
     print("📄 PDF mới nhất:", latest_pdf)
 
-    # Bước 2: OCR
+    # Bước 2: OCR file đó
     print("🧠 Đang OCR...")
-    subprocess.run(["python", "ocr_to_json.py", str(latest_pdf)], check=True)
+    try:
+        subprocess.run(["python", "ocr_to_json.py", str(latest_pdf)], check=True)
+    except subprocess.CalledProcessError as e:
+        print(f"❌ Lỗi khi chạy OCR: {e}")
+        return
 
-    # Bước 3: Extract
+    # Bước 3: Extract vào Google Sheet
     json_file = str(latest_pdf).replace(".pdf", ".json")
     print("📊 Đang extract dữ liệu sang Google Sheet...")
-    subprocess.run(["python", "extract_to_sheet.py", json_file], check=True)
+    try:
+        subprocess.run(["python", "extract_to_sheet.py", json_file], check=True)
+    except subprocess.CalledProcessError as e:
+        print(f"❌ Lỗi khi extract sang Google Sheet: {e}")
+        return
 
     print("✅ Hoàn tất pipeline cho dòng đầu tiên.")
 
