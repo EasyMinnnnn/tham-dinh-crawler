@@ -28,4 +28,6 @@ jobs:
           GOOGLE_CREDENTIALS_JSON: ${{ secrets.GOOGLE_CREDENTIALS_JSON }}
           GOOGLE_APPLICATION_CREDENTIALS_JSON: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS_JSON }}
           GOOGLE_SHEET_ID: ${{ secrets.GOOGLE_SHEET_ID }}
+          GOOGLE_PROJECT_ID: your-project-id-here
+          GOOGLE_PROCESSOR_ID: your-processor-id-here
         run: python src/run_one_pipeline.py
