@@ -1,28 +1,39 @@
+import sys, os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 import asyncio
-import os
 import subprocess
 from src.download_pdf import run as download_pdf
-from src.extract_to_sheet import run as extract_to_sheet
+from src.utils import print_step
 
 async def main():
-    print("🌐 Đang crawl link PDF...")
-    latest_pdf = await download_pdf(only_latest=True)
+    print_step("📦 BASE64_PDF_END")
+    print_step("🌐 Đã vào trang danh sách.")
 
-    if not latest_pdf:
-        print("❌ Không tìm thấy PDF mới.")
+    pdf_files = download_pdf(limit=1)
+    if not pdf_files:
+        print("❌ Không tải được file PDF nào.")
         return
 
-    print(f"📄 PDF mới nhất: {latest_pdf}")
-    print("🧠 Đang OCR...")
+    latest_pdf = pdf_files[0]
+    print_step(f"📄 PDF mới nhất: {latest_pdf}")
+    print_step("🧠 Đang OCR...")
 
     try:
-        subprocess.run(["python", "ocr_to_json.py", str(latest_pdf)], check=True, env=os.environ)
+        subprocess.run(["python", "ocr_to_json.py", str(latest_pdf)], check=True)
     except subprocess.CalledProcessError as e:
-        print(f"❌ OCR thất bại: {e}")
-        return
+        print(f"❌ OCR lỗi: {e}")
+        raise
 
-    print("📊 Đang extract JSON vào Google Sheet...")
-    await extract_to_sheet(file_path=latest_pdf.replace(".pdf", ".json"))
+    print_step("📤 Đang đẩy dữ liệu vào Google Sheet...")
+
+    try:
+        subprocess.run(["python", "extract_to_sheet.py", str(latest_pdf).replace(".pdf", ".json")], check=True)
+    except subprocess.CalledProcessError as e:
+        print(f"❌ Lỗi khi extract: {e}")
+        raise
+
+    print_step("✅ Hoàn thành toàn bộ pipeline!")
 
 if __name__ == "__main__":
     asyncio.run(main())
