@@ -1,36 +1,83 @@
 import asyncio
+import os
 import subprocess
-from .download_pdf import run as download_pdf
-from .utils import print_step
+from pathlib import Path
+from playwright.async_api import async_playwright
 
 async def main():
-    print_step("📦 BASE64_PDF_END")
-    print_step("🌐 Đã vào trang danh sách.")
+    base_url = "https://mof.gov.vn/bo-tai-chinh/danh-sach-tham-dinh-ve-gia"
+    domain = "https://mof.gov.vn"
 
-    pdf_files = download_pdf(limit=1)
+    async with async_playwright() as p:
+        browser = await p.chromium.launch(headless=True)
+        page = await browser.new_page()
+        await page.goto(base_url, timeout=30000)
+        print("🌐 Đã vào trang danh sách.")
+
+        # Chờ trang tải xong
+        await page.wait_for_timeout(5000)
+
+        # Lưu HTML để kiểm tra sau
+        html = await page.content()
+        with open("mof_debug.html", "w", encoding="utf-8") as f:
+            f.write(html)
+
+        # Lấy toàn bộ thẻ <a> trên trang
+        # Lấy tất cả các thẻ <a>
+        link_elements = await page.query_selector_all("a")
+        print(f"🔎 Tổng số thẻ <a>: {len(link_elements)}")
+
+@@ -30,46 +25,47 @@
+            href = await link.get_attribute("href")
+            text = await link.inner_text()
+            if href:
+                print(f"↪️ {text.strip()} --> {href.strip()}")
+            if href and href.startswith("/bo-tai-chinh/danh-sach-tham-dinh-ve-gia/") and href.count("/") > 4:
+                href = href.strip()
+                print(f"↪️ {text.strip()} --> {href}")
+            if href.startswith("/bo-tai-chinh/danh-sach-tham-dinh-ve-gia/"):
+                valid_links.append(href)
+
+        if not valid_links:
+            print("❌ Không tìm thấy bài viết hợp lệ.")
+            await browser.close()
+            return
+
+        detail_url = valid_links[0]
+        if not detail_url.startswith("http"):
+            detail_url = "https://mof.gov.vn" + detail_url
+
+        # Nối domain vào link đầu tiên
+        relative_path = valid_links[0]
+        detail_url = domain + relative_path
+        print("🔗 Link chi tiết:", detail_url)
+
+        await browser.close()
+
+    # Bước 1: Download PDF
+    print("📥 Đang tải PDF...")
+    subprocess.run(["python", "download_pdf.py", detail_url], check=True)
+
+    # Tìm file PDF mới nhất trong thư mục outputs/
+    output_dir = Path("outputs")
+    pdf_files = list(output_dir.glob("*.pdf"))
     if not pdf_files:
-        print("❌ Không tải được file PDF nào.")
+        print("❌ Không tìm thấy file PDF sau khi tải.")
         return
 
-    latest_pdf = pdf_files[0]
-    print_step(f"📄 PDF mới nhất: {latest_pdf}")
-    print_step("🧠 Đang OCR...")
+    latest_pdf = max(pdf_files, key=os.path.getmtime)
+    print("📄 PDF mới nhất:", latest_pdf)
 
-    try:
-        subprocess.run(["python", "ocr_to_json.py", str(latest_pdf)], check=True)
-    except subprocess.CalledProcessError as e:
-        print(f"❌ OCR lỗi: {e}")
-        raise
+    # Bước 2: OCR file đó
+    print("🧠 Đang OCR...")
+    subprocess.run(["python", "ocr_to_json.py", str(latest_pdf)], check=True)
 
-    print_step("📤 Đang đẩy dữ liệu vào Google Sheet...")
+    # Bước 3: Extract vào Google Sheet
+    json_file = str(latest_pdf).replace(".pdf", ".json")
+    print("📊 Đang extract dữ liệu sang Google Sheet...")
+    subprocess.run(["python", "extract_to_sheet.py", json_file], check=True)
 
-    try:
-        subprocess.run(["python", "extract_to_sheet.py", str(latest_pdf).replace(".pdf", ".json")], check=True)
-    except subprocess.CalledProcessError as e:
-        print(f"❌ Lỗi khi extract: {e}")
-        raise
-
-    print_step("✅ Hoàn thành toàn bộ pipeline!")
+    print("✅ Hoàn tất pipeline cho dòng đầu tiên.")
 
 if __name__ == "__main__":
     asyncio.run(main())
