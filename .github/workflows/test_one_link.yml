@@ -25,12 +25,10 @@ jobs:
 
       - name: 🗂️ Create credentials file
         run: |
-          echo "${{ secrets.GOOGLE_CREDENTIALS_JSON }}" > key.json
-          echo "${{ secrets.GOOGLE_CREDENTIALS_JSON }}" > $GITHUB_WORKSPACE/key.json
-          printf "%s" "${{ secrets.GOOGLE_CREDENTIALS_JSON }}" > $GITHUB_WORKSPACE/key.json
+          printf "%s" "${{ secrets.GOOGLE_APPLICATION_CREDENTIALS_JSON }}" > $GITHUB_WORKSPACE/key.json
         shell: bash
 
-      # ✅ Optional: debug nội dung file nếu cần kiểm tra
+      # ✅ Debug nhanh nếu lỗi key.json
       - name: 🐛 Debug credential file (optional)
         run: |
           echo "First lines of key.json:"
