@@ -1,48 +1,47 @@
-import asyncio
 import os
-import sys
 import time
-from urllib.parse import urlparse
-from playwright.async_api import async_playwright, TimeoutError as PlaywrightTimeoutError
+from pathlib import Path
+from playwright.async_api import async_playwright
 
-async def run(url):
-    os.makedirs("outputs", exist_ok=True)
+DOWNLOAD_DIR = "outputs"
+BASE_URL = "https://mof.gov.vn"
+
+async def download_pdf(link):
+    from playwright.async_api import async_playwright
 
     async with async_playwright() as p:
         browser = await p.chromium.launch(headless=True)
-        page = await browser.new_page()
+        context = await browser.new_context(accept_downloads=True)
+        page = await context.new_page()
 
+        full_url = link if link.startswith("http") else BASE_URL + link
+        print(f"🌐 Đã mở trang: {full_url}")
+        await page.goto(full_url, timeout=60000)
+        await page.wait_for_timeout(2000)  # Đợi 2s cho trang load ổn định
+
+        # Tìm nút tải theo đúng XPath bạn cung cấp
         try:
-            await page.goto(url, timeout=15000)
-            print("🌐 Đã mở trang:", url)
+            print("📥 Đang tìm nút download PDF...")
+            download_button = await page.wait_for_selector(
+                '//html/body/div[1]/div/main/div/div[1]/div/div[2]/div[4]/div/form/div/div/div[2]/div[3]/div/div/div[2]/button[4]',
+                timeout=10000
+            )
 
-            # Đợi nút download trong tối đa 10s
-            try:
-                download_button = await page.wait_for_selector('button#download[title="Download"]', timeout=10000)
-            except PlaywrightTimeoutError:
-                print("❌ Không tìm thấy nút download trong trang.")
-                return
-
-            print("📥 Đã tìm thấy nút download, đang click...")
-
-            async with page.expect_download() as download_info:
+            if download_button:
+                print("📥 Đã tìm thấy nút download, đang click...")
+                download = await page.expect_download()
                 await download_button.click()
-            download = await download_info.value
+                dl = await download.value
+                save_path = os.path.join(DOWNLOAD_DIR, dl.suggested_filename)
+                await dl.save_as(save_path)
+                print(f"✅ Đã tải file về: {save_path}")
+                return save_path
+            else:
+                print("❌ Không tìm thấy nút download trong trang.")
+                return None
 
-            # Tạo tên file từ slug URL hoặc timestamp
-            slug = os.path.basename(urlparse(url).path)
-            filename = f"{slug or int(time.time())}.pdf"
-            save_path = os.path.join("outputs", filename)
-
-            await download.save_as(save_path)
-            print(f"✅ Đã tải file về: {save_path}")
         except Exception as e:
-            print("❌ Lỗi khi tải file:", e)
+            print("❌ Lỗi khi click nút download:", e)
+            return None
         finally:
             await browser.close()
-
-if __name__ == "__main__":
-    if len(sys.argv) != 2:
-        print("⚠️ Cách dùng: python download_pdf.py <URL>")
-    else:
-        asyncio.run(run(sys.argv[1]))
