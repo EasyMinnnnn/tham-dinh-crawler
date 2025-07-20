@@ -1,54 +1,41 @@
 import os
+import sys
 import json
-from google.cloud import documentai_v1 as documentai
-from google.api_core.exceptions import GoogleAPICallError
+from google.cloud import documentai_v1beta3 as documentai
+from google.cloud.documentai_v1beta3 import types
 
-# Thiết lập Document AI
+# Đọc đường dẫn file PDF từ dòng lệnh
+pdf_path = sys.argv[1]
+
+# Ghi file key.json từ GOOGLE_CREDENTIALS_JSON
+credentials_content = os.environ["GOOGLE_CREDENTIALS_JSON"]
+
+with open("key.json", "w") as f:
+    f.write(credentials_content)
+
+# Đặt biến môi trường để dùng Application Default Credentials
+os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "key.json"
+
+# Khởi tạo Document AI client
+client = documentai.DocumentProcessorServiceClient()
+
+# Lấy thông tin project và processor ID từ biến môi trường
 project_id = os.environ["GOOGLE_PROJECT_ID"]
-location = "us"  # Thay bằng 'asia-southeast1' nếu dùng vùng khác
+location = os.environ.get("GOOGLE_LOCATION", "us")
 processor_id = os.environ["GOOGLE_PROCESSOR_ID"]
 
-client = documentai.DocumentProcessorServiceClient()
-name = f"projects/{project_id}/locations/{location}/processors/{processor_id}"
+# Gán tài nguyên processor
+name = client.processor_path(project_id, location, processor_id)
 
-input_dir = "outputs"
-processed = 0
+# Đọc file PDF
+with open(pdf_path, "rb") as f:
+    document_content = f.read()
 
-for filename in os.listdir(input_dir):
-    if filename.endswith(".pdf"):
-        pdf_path = os.path.join(input_dir, filename)
-        json_path = pdf_path.replace(".pdf", ".json")
+# Gửi yêu cầu OCR
+raw_document = types.RawDocument(content=document_content, mime_type="application/pdf")
+request = types.ProcessRequest(name=name, raw_document=raw_document)
+result = client.process_document(request=request)
 
-        print(f"🧠 OCR file: {filename}")
-        try:
-            with open(pdf_path, "rb") as f:
-                pdf_bytes = f.read()
-
-            raw_document = documentai.RawDocument(
-                content=pdf_bytes, mime_type="application/pdf"
-            )
-
-            request = {"name": name, "raw_document": raw_document}
-            result = client.process_document(request=request)
-
-            document = result.document
-            if not document.pages:
-                print(f"⚠️ Không có trang nào được OCR từ: {filename}")
-                continue
-
-            # Chuyển protobuf sang dict
-            document_dict = document._pb.__class__.to_dict(document._pb)
-
-            with open(json_path, "w", encoding="utf-8") as f:
-                json.dump(document_dict, f, ensure_ascii=False)
-
-            print(f"✅ Đã lưu file JSON: {json_path}")
-            os.remove(pdf_path)  # Cleanup PDF sau khi xử lý
-            processed += 1
-
-        except GoogleAPICallError as api_error:
-            print(f"❌ Lỗi từ Google API: {api_error}")
-        except Exception as e:
-            print(f"❌ Lỗi khác khi OCR {filename}: {e}")
-
-print(f"\n📄 Tổng số file OCR thành công: {processed}")
+# Hiển thị nội dung đã nhận dạng
+print("📄 Nội dung OCR:")
+print(result.document.text)
