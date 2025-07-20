@@ -14,29 +14,29 @@ async def main():
         print("🌐 Đã vào trang danh sách.")
 
         # Lấy tất cả thẻ <a> trỏ đến bài viết chi tiết
-    await page.wait_for_timeout(3000)
-    link_elements = await page.query_selector_all('a[href^="/bo-tai-chinh/danh-sach-tham-dinh-ve-gia/"]')
+        await page.wait_for_timeout(3000)
+        link_elements = await page.query_selector_all('a[href^="/bo-tai-chinh/danh-sach-tham-dinh-ve-gia/"]')
 
-    # Bỏ qua 3 link đầu (thường là tiêu đề mục hoặc link rác)
-    valid_links = link_elements[3:]  # Bỏ 0, 1, 2
+        # Bỏ qua 3 link đầu (thường là tiêu đề mục hoặc link rác)
+        valid_links = link_elements[3:]
 
-    first_item = None
-    for link in valid_links:
-    href = await link.get_attribute("href")
-    if href and href.count("/") > 4:  # Loại bỏ các link chỉ là danh mục
-        first_item = link
-        break
+        first_item = None
+        for link in valid_links:
+            href = await link.get_attribute("href")
+            if href and href.count("/") > 4:  # Loại bỏ các link chỉ là danh mục
+                first_item = link
+                break
 
-if not first_item:
-    print("❌ Không tìm thấy bài viết hợp lệ.")
-    return
+        if not first_item:
+            print("❌ Không tìm thấy bài viết hợp lệ.")
+            await browser.close()
+            return
 
-detail_url = await first_item.get_attribute("href")
-if not detail_url.startswith("http"):
-    detail_url = "https://mof.gov.vn" + detail_url
+        detail_url = await first_item.get_attribute("href")
+        if not detail_url.startswith("http"):
+            detail_url = "https://mof.gov.vn" + detail_url
 
-print("🔗 Link chi tiết:", detail_url)
-
+        print("🔗 Link chi tiết:", detail_url)
 
         await browser.close()
 
