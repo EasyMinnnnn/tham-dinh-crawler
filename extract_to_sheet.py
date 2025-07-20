@@ -3,7 +3,7 @@ import json
 import gspread
 from google.oauth2.service_account import Credentials
 
-# 🔐 Tải thông tin Google Service Account từ biến môi trường
+# 🔐 Đọc thông tin từ biến môi trường GOOGLE_CREDENTIALS_JSON
 credentials_json = os.environ.get("GOOGLE_CREDENTIALS_JSON")
 if not credentials_json:
     raise Exception("❌ Thiếu biến môi trường GOOGLE_CREDENTIALS_JSON.")
@@ -13,12 +13,12 @@ try:
 except json.JSONDecodeError as e:
     raise Exception(f"❌ GOOGLE_CREDENTIALS_JSON không phải JSON hợp lệ: {e}")
 
-# 📄 Khởi tạo Google Sheets client
+# 📄 Khởi tạo credentials và client
 scopes = ["https://www.googleapis.com/auth/spreadsheets"]
 creds = Credentials.from_service_account_info(creds_info, scopes=scopes)
 client = gspread.authorize(creds)
 
-# 📊 Mở sheet
+# 📊 Lấy sheet ID và mở worksheet
 sheet_id = os.environ.get("GOOGLE_SHEET_ID")
 sheet_name = "Sheet1"
 if not sheet_id:
@@ -26,7 +26,7 @@ if not sheet_id:
 
 worksheet = client.open_by_key(sheet_id).worksheet(sheet_name)
 
-# 📦 Hàm trích dữ liệu từ file JSON OCR
+# 📦 Hàm trích dữ liệu từ JSON OCR
 def extract_data_from_json(json_path):
     with open(json_path, "r", encoding="utf-8") as f:
         try:
@@ -50,7 +50,7 @@ def extract_data_from_json(json_path):
                     all_text.append(row_text)
     return all_text
 
-# 🚀 Quét thư mục và xử lý từng file .json
+# 🚀 Duyệt các file JSON trong thư mục outputs
 json_dir = "outputs"
 processed = 0
 
