@@ -3,20 +3,30 @@ import json
 import gspread
 from google.oauth2.service_account import Credentials
 
-# Thiết lập Google Sheet API
-SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
+# 🔐 Tải thông tin Google Service Account từ biến môi trường
+credentials_json = os.environ.get("GOOGLE_CREDENTIALS_JSON")
+if not credentials_json:
+    raise Exception("❌ Thiếu biến môi trường GOOGLE_CREDENTIALS_JSON.")
 
-# Nhận credentials từ biến môi trường
-creds_info = json.loads(os.environ["GOOGLE_CREDENTIALS_JSON"])
-CREDS = Credentials.from_service_account_info(creds_info, scopes=SCOPES)
-gc = gspread.authorize(CREDS)
+try:
+    creds_info = json.loads(credentials_json)
+except json.JSONDecodeError as e:
+    raise Exception(f"❌ GOOGLE_CREDENTIALS_JSON không phải JSON hợp lệ: {e}")
 
-# Lấy thông tin sheet
-sheet_id = os.environ["GOOGLE_SHEET_ID"]
-sheet_name = os.getenv("SHEET_NAME", "Trang tính1")  # ✅ Đổi tên tại đây nếu cần
-worksheet = gc.open_by_key(sheet_id).worksheet(sheet_name)
+# 📄 Khởi tạo Google Sheets client
+scopes = ["https://www.googleapis.com/auth/spreadsheets"]
+creds = Credentials.from_service_account_info(creds_info, scopes=scopes)
+client = gspread.authorize(creds)
 
-# Hàm trích dữ liệu từ JSON OCR
+# 📊 Mở sheet
+sheet_id = os.environ.get("GOOGLE_SHEET_ID")
+sheet_name = "Sheet1"
+if not sheet_id:
+    raise Exception("❌ Thiếu biến môi trường GOOGLE_SHEET_ID.")
+
+worksheet = client.open_by_key(sheet_id).worksheet(sheet_name)
+
+# 📦 Hàm trích dữ liệu từ file JSON OCR
 def extract_data_from_json(json_path):
     with open(json_path, "r", encoding="utf-8") as f:
         try:
@@ -40,7 +50,7 @@ def extract_data_from_json(json_path):
                     all_text.append(row_text)
     return all_text
 
-# Quét thư mục outputs và xử lý file .json
+# 🚀 Quét thư mục và xử lý từng file .json
 json_dir = "outputs"
 processed = 0
 
