@@ -15,13 +15,13 @@ def download_latest_pdf(base_url="https://mof.gov.vn", relative_link=""):
         full_url = urljoin(base_url, relative_link)
         print(f"🌐 Đang mở trang: {full_url}")
         page.goto(full_url, timeout=60000)
-        page.wait_for_timeout(5000)  # tăng thời gian đợi render
+        page.wait_for_timeout(7000)  # chờ render đầy đủ
 
         try:
             print("📥 Đang tìm nút download theo ID '#download'...")
-            page.wait_for_selector("#download", timeout=15000)  # tăng timeout
+            page.wait_for_selector("#download", timeout=20000)  # timeout dài hơn
 
-            with page.expect_download(timeout=15000) as download_info:
+            with page.expect_download(timeout=20000) as download_info:
                 page.click("#download")
 
             download = download_info.value
@@ -32,9 +32,17 @@ def download_latest_pdf(base_url="https://mof.gov.vn", relative_link=""):
 
         except Exception as e:
             print(f"❌ Không thể tải file: {e}")
-            print("📄 HTML hiện tại để debug:")
             try:
-                print(page.content())
+                page.screenshot(path="debug_screenshot.png")
+                print("🖼️ Đã chụp ảnh màn hình: debug_screenshot.png")
+            except:
+                print("⚠️ Không thể chụp ảnh màn hình.")
+            try:
+                content = page.content()
+                if "download" in content.lower():
+                    print("🔍 Có vẻ nội dung có từ 'download', nhưng không tìm thấy selector.")
+                else:
+                    print("⚠️ HTML không chứa nội dung liên quan đến nút tải.")
             except:
                 print("⚠️ Không thể in HTML.")
         finally:
