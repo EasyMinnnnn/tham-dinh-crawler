@@ -5,7 +5,7 @@ from google.cloud import documentai_v1 as documentai
 from google.oauth2 import service_account
 from google.api_core.exceptions import GoogleAPICallError
 
-# ✅ Sử dụng đúng biến đã có
+# ✅ Dùng đúng biến đã có
 credentials_json = os.environ["GOOGLE_CREDENTIALS_JSON"]
 credentials_dict = json.loads(credentials_json)
 credentials = service_account.Credentials.from_service_account_info(credentials_dict)
@@ -53,8 +53,9 @@ for filename in os.listdir(input_dir):
 
         except GoogleAPICallError as api_error:
             print(f"❌ Lỗi từ Google API: {api_error}")
+            traceback.print_exc()
         except Exception as e:
             print(f"❌ Lỗi khác khi OCR {filename}: {e}")
-            print(traceback.format_exc())
+            traceback.print_exc()
 
 print(f"\n📄 Tổng số file OCR thành công: {processed}")
