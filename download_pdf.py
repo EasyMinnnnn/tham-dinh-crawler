@@ -15,13 +15,13 @@ def download_latest_pdf(base_url="https://mof.gov.vn", relative_link=""):
         full_url = urljoin(base_url, relative_link)
         print(f"🌐 Đang mở trang: {full_url}")
         page.goto(full_url, timeout=60000)
-        page.wait_for_timeout(3000)
+        page.wait_for_timeout(5000)  # tăng thời gian đợi render
 
         try:
             print("📥 Đang tìm nút download theo ID '#download'...")
-            page.wait_for_selector("#download", timeout=5000)
+            page.wait_for_selector("#download", timeout=15000)  # tăng timeout
 
-            with page.expect_download(timeout=10000) as download_info:
+            with page.expect_download(timeout=15000) as download_info:
                 page.click("#download")
 
             download = download_info.value
@@ -32,6 +32,11 @@ def download_latest_pdf(base_url="https://mof.gov.vn", relative_link=""):
 
         except Exception as e:
             print(f"❌ Không thể tải file: {e}")
+            print("📄 HTML hiện tại để debug:")
+            try:
+                print(page.content())
+            except:
+                print("⚠️ Không thể in HTML.")
         finally:
             print("📁 Kiểm tra thư mục outputs:")
             print(os.listdir(output_dir))
@@ -41,7 +46,6 @@ def download_latest_pdf(base_url="https://mof.gov.vn", relative_link=""):
     return None
 
 if __name__ == "__main__":
-    # Link cụ thể để test thủ công
     pdf_path = download_latest_pdf(
         relative_link="/bo-tai-chinh/danh-sach-tham-dinh-ve-gia/quyet-dinh-so-2320tb-btc-ve-viec-thu-hoi-giay-chung-nhan-du-dieu-kien-kinh-doanh-dich-vu-tham-dinh-gia"
     )
