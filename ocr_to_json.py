@@ -5,12 +5,11 @@ from google.cloud import documentai_v1 as documentai
 from google.oauth2 import service_account
 from google.api_core.exceptions import GoogleAPICallError
 
-# 🔐 Tải credentials từ biến môi trường (dạng JSON)
+# ✅ Sử dụng đúng biến đã có
 credentials_json = os.environ["GOOGLE_CREDENTIALS_JSON"]
 credentials_dict = json.loads(credentials_json)
 credentials = service_account.Credentials.from_service_account_info(credentials_dict)
 
-# ⚙️ Thiết lập Document AI client
 project_id = os.environ["GOOGLE_PROJECT_ID"]
 location = "us"
 processor_id = os.environ["GOOGLE_PROCESSOR_ID"]
