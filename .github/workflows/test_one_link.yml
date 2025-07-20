@@ -1,71 +1,46 @@
-import os
-import sys
-import json
-from google.cloud import documentai_v1 as documentai
-from google.oauth2 import service_account
-from google.api_core.exceptions import GoogleAPICallError
+name: 🔍 Test 1 link MOF
 
-# 🔐 Đọc credentials từ file key.json
-CREDENTIAL_FILE = "key.json"
-try:
-    with open(CREDENTIAL_FILE, "r", encoding="utf-8") as f:
-        credentials_dict = json.load(f)
-    credentials = service_account.Credentials.from_service_account_info(credentials_dict)
-except Exception as e:
-    print(f"❌ GOOGLE_APPLICATION_CREDENTIALS không phải JSON hợp lệ: {e}")
-    sys.exit(1)
+on:
+  workflow_dispatch:
 
-# ⚙️ Khởi tạo Document AI client
-project_id = os.environ["GOOGLE_PROJECT_ID"]
-location = "us"
-processor_id = os.environ["GOOGLE_PROCESSOR_ID"]
+jobs:
+  run-one-link:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
 
-client = documentai.DocumentProcessorServiceClient(credentials=credentials)
-name = f"projects/{project_id}/locations/{location}/processors/{processor_id}"
+    steps:
+      - name: 🧾 Checkout code
+        uses: actions/checkout@v3
 
-def process_file(pdf_path):
-    json_path = pdf_path.replace(".pdf", ".json")
-    print(f"🧠 OCR file: {pdf_path}")
-    try:
-        with open(pdf_path, "rb") as f:
-            pdf_bytes = f.read()
+      - name: 📦 Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
 
-        raw_document = documentai.RawDocument(content=pdf_bytes, mime_type="application/pdf")
-        request = {"name": name, "raw_document": raw_document}
-        result = client.process_document(request=request)
+      - name: 🧪 Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          playwright install chromium
 
-        document = result.document
-        if not document.pages:
-            print(f"⚠️ Không có trang nào được OCR từ: {pdf_path}")
-            return False
+      - name: 🗂️ Create credentials file
+        run: |
+          echo "${{ secrets.GOOGLE_CREDENTIALS_JSON }}" > key.json
+          echo "${{ secrets.GOOGLE_CREDENTIALS_JSON }}" > $GITHUB_WORKSPACE/key.json
+          printf "%s" "${{ secrets.GOOGLE_CREDENTIALS_JSON }}" > $GITHUB_WORKSPACE/key.json
+        shell: bash
 
-        document_dict = document._pb.__class__.to_dict(document._pb)
-        with open(json_path, "w", encoding="utf-8") as f:
-            json.dump(document_dict, f, ensure_ascii=False)
+      # ✅ Optional: debug nội dung file nếu cần kiểm tra
+      - name: 🐛 Debug credential file (optional)
+        run: |
+          echo "First lines of key.json:"
+          head -n 5 $GITHUB_WORKSPACE/key.json || echo "⚠️ File rỗng!"
+        shell: bash
 
-        print(f"✅ Đã lưu file JSON: {json_path}")
-        os.remove(pdf_path)
-        return True
-
-    except GoogleAPICallError as api_error:
-        print(f"❌ Lỗi từ Google API: {api_error}")
-    except Exception as e:
-        print(f"❌ Lỗi khi OCR {pdf_path}: {e}")
-    return False
-
-if __name__ == "__main__":
-    if len(sys.argv) > 1:
-        pdf_file = sys.argv[1]
-        if not os.path.exists(pdf_file):
-            print(f"❌ File không tồn tại: {pdf_file}")
-            sys.exit(1)
-        process_file(pdf_file)
-    else:
-        input_dir = "outputs"
-        files = [f for f in os.listdir(input_dir) if f.endswith(".pdf")]
-        success = 0
-        for f in files:
-            path = os.path.join(input_dir, f)
-            if process_file(path):
-                success += 1
-        print(f"\n📄 Tổng số file OCR thành công: {success}")
+      - name: ⚙️ Run run_one_pipeline.py
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ github.workspace }}/key.json
+          GOOGLE_SHEET_ID: ${{ secrets.GOOGLE_SHEET_ID }}
+          GOOGLE_PROJECT_ID: ${{ secrets.GOOGLE_PROJECT_ID }}
+          GOOGLE_PROCESSOR_ID: ${{ secrets.GOOGLE_PROCESSOR_ID }}
+        run: python src/run_one_pipeline.py
