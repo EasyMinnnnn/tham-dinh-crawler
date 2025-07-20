@@ -13,17 +13,23 @@ async def main():
         await page.goto(base_url, timeout=20000)
         print("🌐 Đã vào trang danh sách.")
 
-        # Lấy tất cả thẻ <a> trỏ đến bài viết chi tiết
-        await page.wait_for_timeout(3000)
-        link_elements = await page.query_selector_all('a[href^="/bo-tai-chinh/danh-sach-tham-dinh-ve-gia/"]')
+        # Đợi trang tải đầy đủ
+        await page.wait_for_selector("div.news-list-item a", timeout=10000)
 
-        # Bỏ qua 3 link đầu (thường là tiêu đề mục hoặc link rác)
-        valid_links = link_elements[3:]
+        # Lấy danh sách bài viết
+        link_elements = await page.query_selector_all("div.news-list-item a")
+        if not link_elements or len(link_elements) == 0:
+            print("❌ Không tìm thấy bất kỳ bài viết nào.")
+            await browser.close()
+            return
+
+        # Bỏ 2-3 link đầu, lấy bài viết chi tiết đầu tiên
+        valid_links = link_elements[2:]  # bỏ các tiêu đề phân mục nếu có
 
         first_item = None
         for link in valid_links:
             href = await link.get_attribute("href")
-            if href and href.count("/") > 4:  # Loại bỏ các link chỉ là danh mục
+            if href and "/bo-tai-chinh/danh-sach-tham-dinh-ve-gia/" in href:
                 first_item = link
                 break
 
