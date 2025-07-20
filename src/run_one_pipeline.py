@@ -10,26 +10,31 @@ async def main():
     async with async_playwright() as p:
         browser = await p.chromium.launch(headless=True)
         page = await browser.new_page()
-        await page.goto(base_url, timeout=20000)
+        await page.goto(base_url, timeout=30000)
         print("🌐 Đã vào trang danh sách.")
 
-        # Đợi trang tải đầy đủ
-        await page.wait_for_selector("div.news-list-item a", timeout=10000)
+        # Chờ DOM tải xong
+        await page.wait_for_timeout(5000)
 
-        # Lấy danh sách bài viết
-        link_elements = await page.query_selector_all("div.news-list-item a")
-        if not link_elements or len(link_elements) == 0:
-            print("❌ Không tìm thấy bất kỳ bài viết nào.")
+        # Lưu lại HTML để debug khi cần
+        html = await page.content()
+        with open("mof_debug.html", "w", encoding="utf-8") as f:
+            f.write(html)
+
+        # Tìm các link bắt đầu bằng đường dẫn chi tiết
+        link_elements = await page.query_selector_all('a[href^="/bo-tai-chinh/danh-sach-tham-dinh-ve-gia/"]')
+        if not link_elements:
+            print("❌ Không tìm thấy bất kỳ thẻ <a> nào phù hợp.")
             await browser.close()
             return
 
-        # Bỏ 2-3 link đầu, lấy bài viết chi tiết đầu tiên
-        valid_links = link_elements[2:]  # bỏ các tiêu đề phân mục nếu có
+        # Bỏ qua 3 link đầu (thường là tiêu đề hoặc phân loại)
+        valid_links = link_elements[3:]
 
         first_item = None
         for link in valid_links:
             href = await link.get_attribute("href")
-            if href and "/bo-tai-chinh/danh-sach-tham-dinh-ve-gia/" in href:
+            if href and href.count("/") > 4:
                 first_item = link
                 break
 
