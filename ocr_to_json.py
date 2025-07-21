@@ -5,20 +5,27 @@ from google.cloud import documentai_v1 as documentai
 from google.oauth2 import service_account
 from google.api_core.exceptions import GoogleAPICallError
 
-# 🔐 Đọc credentials từ file key.json
-CREDENTIAL_FILE = "key.json"
+# 🔐 Đọc credentials từ biến môi trường
+credentials_json = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS_JSON")
+if not credentials_json:
+    print("❌ Thiếu biến môi trường GOOGLE_APPLICATION_CREDENTIALS_JSON.")
+    sys.exit(1)
+
 try:
-    with open(CREDENTIAL_FILE, "r", encoding="utf-8") as f:
-        credentials_dict = json.load(f)
+    credentials_dict = json.loads(credentials_json)
     credentials = service_account.Credentials.from_service_account_info(credentials_dict)
 except Exception as e:
-    print(f"❌ GOOGLE_APPLICATION_CREDENTIALS không phải JSON hợp lệ: {e}")
+    print(f"❌ GOOGLE_APPLICATION_CREDENTIALS_JSON không hợp lệ: {e}")
     sys.exit(1)
 
 # ⚙️ Khởi tạo Document AI client
-project_id = os.environ["GOOGLE_PROJECT_ID"]
+project_id = os.environ.get("GOOGLE_PROJECT_ID")
+processor_id = os.environ.get("GOOGLE_PROCESSOR_ID")
 location = "us"
-processor_id = os.environ["GOOGLE_PROCESSOR_ID"]
+
+if not project_id or not processor_id:
+    print("❌ Thiếu GOOGLE_PROJECT_ID hoặc GOOGLE_PROCESSOR_ID.")
+    sys.exit(1)
 
 client = documentai.DocumentProcessorServiceClient(credentials=credentials)
 name = f"projects/{project_id}/locations/{location}/processors/{processor_id}"
