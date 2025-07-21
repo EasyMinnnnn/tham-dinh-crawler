@@ -29,7 +29,6 @@ async def main():
             text = await link.inner_text()
             if href:
                 print(f"↪️ {text.strip()} --> {href.strip()}")
-            # ❗ ĐÃ SỬA: bỏ điều kiện count("/")
             if href and href.startswith("/bo-tai-chinh/danh-sach-tham-dinh-ve-gia/"):
                 href = href.strip()
                 valid_links.append(href)
@@ -46,7 +45,7 @@ async def main():
         await browser.close()
 
     print("📥 Đang tải PDF...")
-    subprocess.run(["python", "download_pdf.py", detail_url], check=True)
+    subprocess.run(["python", "src/download_pdf.py", detail_url], check=True)
 
     output_dir = Path("outputs")
     pdf_files = list(output_dir.glob("*.pdf"))
@@ -59,7 +58,7 @@ async def main():
 
     print("🧠 Đang OCR...")
     try:
-        subprocess.run(["python", "ocr_to_json.py", str(latest_pdf)], check=True)
+        subprocess.run(["python", "src/ocr_to_json.py", str(latest_pdf)], check=True)
     except subprocess.CalledProcessError as e:
         print(f"❌ Lỗi khi chạy OCR: {e}")
         return
@@ -67,7 +66,7 @@ async def main():
     json_file = str(latest_pdf).replace(".pdf", ".json")
     print("📊 Đang extract dữ liệu sang Google Sheet...")
     try:
-        subprocess.run(["python", "extract_to_sheet.py", json_file], check=True)
+        subprocess.run(["python", "src/extract_to_sheet.py", json_file], check=True)
     except subprocess.CalledProcessError as e:
         print(f"❌ Lỗi khi extract sang Google Sheet: {e}")
         return
