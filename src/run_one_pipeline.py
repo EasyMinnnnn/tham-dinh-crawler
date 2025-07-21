@@ -45,7 +45,7 @@ async def main():
         await browser.close()
 
     print("📥 Đang tải PDF...")
-    subprocess.run(["python", "src/download_pdf.py", detail_url], check=True)
+    subprocess.run(["python", "download_pdf.py", detail_url], check=True)
 
     output_dir = Path("outputs")
     pdf_files = list(output_dir.glob("*.pdf"))
@@ -58,7 +58,7 @@ async def main():
 
     print("🧠 Đang OCR...")
     try:
-        subprocess.run(["python", "src/ocr_to_json.py", str(latest_pdf)], check=True)
+        subprocess.run(["python", "ocr_to_json.py", str(latest_pdf)], check=True)
     except subprocess.CalledProcessError as e:
         print(f"❌ Lỗi khi chạy OCR: {e}")
         return
@@ -66,12 +66,9 @@ async def main():
     json_file = str(latest_pdf).replace(".pdf", ".json")
     print("📊 Đang extract dữ liệu sang Google Sheet...")
     try:
-        subprocess.run(["python", "src/extract_to_sheet.py", json_file], check=True)
+        subprocess.run(["python", "extract_to_sheet.py", json_file], check=True)
     except subprocess.CalledProcessError as e:
         print(f"❌ Lỗi khi extract sang Google Sheet: {e}")
         return
 
-    print("✅ Hoàn tất pipeline cho dòng đầu tiên.")
-
-if __name__ == "__main__":
-    asyncio.run(main())
+    print("✅ Hoàn tất pipeline cho dòng đầu
