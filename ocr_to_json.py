@@ -38,13 +38,23 @@ def fallback_to_manual_json(pdf_path, json_path):
     base_name = os.path.basename(json_path)
     manual_json_path = os.path.join("preprocessed", base_name)
     print(f"🔍 Đang tìm JSON thủ công: {manual_json_path}")
+
     if os.path.exists(manual_json_path):
         shutil.copy(manual_json_path, json_path)
         print(f"🛠️ Dùng JSON thủ công từ preprocessed/: {manual_json_path}")
         return True
     else:
-        print("⚠️ Không tìm thấy JSON thủ công tương ứng.")
-        return False
+        # Thử lại với tên rút gọn nếu tồn tại đường dẫn con
+        pdf_name_only = os.path.basename(pdf_path).replace(".pdf", ".json")
+        alt_path = os.path.join("preprocessed", pdf_name_only)
+        print(f"🔄 Thử fallback với tên rút gọn: {alt_path}")
+        if os.path.exists(alt_path):
+            shutil.copy(alt_path, json_path)
+            print(f"🛠️ Dùng JSON thủ công từ preprocessed/: {alt_path}")
+            return True
+
+    print("⚠️ Không tìm thấy JSON thủ công tương ứng.")
+    return False
 
 def process_file(pdf_path):
     json_path = pdf_path.replace(".pdf", ".json")
