@@ -18,23 +18,16 @@ except Exception as e:
     print(f"❌ GOOGLE_APPLICATION_CREDENTIALS_JSON không hợp lệ: {e}")
     sys.exit(1)
 
-# ⚙️ Lấy các biến cấu hình
+# ⚙️ Khởi tạo Document AI client
 project_id = os.environ.get("GOOGLE_PROJECT_ID")
 processor_id = os.environ.get("GOOGLE_PROCESSOR_ID")
-location = os.environ.get("GOOGLE_LOCATION", "eu")  # ✅ Mặc định là EU
+location = os.environ.get("GOOGLE_LOCATION", "eu")
 
 if not project_id or not processor_id:
     print("❌ Thiếu GOOGLE_PROJECT_ID hoặc GOOGLE_PROCESSOR_ID.")
     sys.exit(1)
 
-# ⚙️ Khởi tạo Document AI client với endpoint đúng region
-api_endpoint = f"{location}-documentai.googleapis.com"
-client_options = {"api_endpoint": api_endpoint}
-client = documentai.DocumentProcessorServiceClient(
-    credentials=credentials,
-    client_options=client_options
-)
-
+client = documentai.DocumentProcessorServiceClient(credentials=credentials)
 name = f"projects/{project_id}/locations/{location}/processors/{processor_id}"
 
 def process_file(pdf_path):
@@ -49,10 +42,13 @@ def process_file(pdf_path):
         result = client.process_document(request=request)
 
         document = result.document
-        if not document.pages:
-            print(f"⚠️ Không có trang nào được OCR từ: {pdf_path}")
+
+        # 🧪 Kiểm tra dữ liệu layout
+        if not document or not document._pb.HasField("document_layout"):
+            print(f"⚠️ Không có dữ liệu layout nào trong: {pdf_path}")
             return False
 
+        # 🧠 Chuyển sang dict và lưu
         document_dict = document._pb.__class__.to_dict(document._pb)
         with open(json_path, "w", encoding="utf-8") as f:
             json.dump(document_dict, f, ensure_ascii=False)
