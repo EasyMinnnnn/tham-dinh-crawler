@@ -36,29 +36,38 @@ name = f"projects/{project_id}/locations/{location}/processors/{processor_id}"
 
 
 def fallback_to_manual_json(pdf_path, json_path):
-    base_name = os.path.basename(pdf_path).replace(".pdf", "")
-    fallback_json = os.path.join("document (5).json")
+    base_name = os.path.basename(json_path)
+    manual_json_path = os.path.join("preprocessed", base_name)
+    if os.path.exists(manual_json_path):
+        shutil.copy(manual_json_path, json_path)
+        print(f"🛠️ Dùng JSON thủ công từ preprocessed/: {manual_json_path}")
+        return True
 
-    if os.path.exists(fallback_json):
-        try:
-            with open(fallback_json, encoding="utf-8") as f:
-                data = json.load(f)
+    fallback_file = "document (5).json"
+    if os.path.exists(fallback_file):
+        with open(fallback_file, "r", encoding="utf-8") as f:
+            fallback_data = json.load(f)
 
-            matched = None
-            for item in data.get("documents", []):
-                if base_name in item.get("uri", ""):
-                    matched = item
-                    break
+        pdf_name = os.path.basename(pdf_path)
 
-            if matched:
+        if isinstance(fallback_data, dict):
+            documents = [fallback_data]
+        elif isinstance(fallback_data, list):
+            documents = fallback_data
+        else:
+            print("⚠️ Fallback document (5).json không đúng định dạng.")
+            return False
+
+        for doc in documents:
+            source = doc.get("documentMetadata", {}).get("inputSource", "")
+            if pdf_name in source:
                 with open(json_path, "w", encoding="utf-8") as out:
-                    json.dump(matched, out, ensure_ascii=False, indent=2)
-                print(f"🔁 Dùng fallback từ document (5).json cho: {base_name}")
+                    json.dump(doc, out, ensure_ascii=False, indent=2)
+                print(f"🛠️ Dùng JSON từ fallback document (5).json: {source}")
                 return True
-        except Exception as e:
-            print(f"⚠️ Lỗi khi đọc fallback document (5).json: {e}")
-
-    print("⚠️ Không tìm thấy JSON fallback tương ứng.")
+        print("⚠️ Không tìm thấy JSON khớp tên trong document (5).json.")
+    else:
+        print("⚠️ Không có file document (5).json để fallback.")
     return False
 
 
@@ -90,6 +99,7 @@ def process_file(pdf_path):
         print(f"❌ Lỗi từ Google API: {api_error}")
     except Exception as e:
         print(f"❌ Lỗi khi OCR {pdf_path}: {e}")
+
     return fallback_to_manual_json(pdf_path, json_path)
 
 
