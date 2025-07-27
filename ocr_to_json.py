@@ -21,15 +21,11 @@ except Exception as e:
 # ⚙️ Lấy thông tin cấu hình từ biến môi trường
 project_id = os.environ.get("GOOGLE_PROJECT_ID")
 processor_id = os.environ.get("GOOGLE_PROCESSOR_ID")
-location = os.environ.get("GOOGLE_LOCATION", "us")  # ✅ Mặc định là 'us'
+location = os.environ.get("GOOGLE_LOCATION", "us")  # ⚠️ Đã sửa default là 'us'
 
 if not project_id or not processor_id:
     print("❌ Thiếu GOOGLE_PROJECT_ID hoặc GOOGLE_PROCESSOR_ID.")
     sys.exit(1)
-
-# ✅ Kiểm tra nếu processor là 'us' nhưng biến khác
-if location.lower() != "us":
-    print(f"⚠️ Cảnh báo: Bạn đang dùng processor ở 'us' nhưng biến GOOGLE_LOCATION đang là '{location}'. Sẽ gây lỗi.")
 
 # 🔧 Khởi tạo Document AI client
 client = documentai.DocumentProcessorServiceClient(credentials=credentials)
@@ -47,25 +43,23 @@ def process_file(pdf_path):
         result = client.process_document(request=request)
         document = result.document
 
-        # 🧪 Kiểm tra layout
-        if not document.pages:
-            print(f"⚠️ Không có trang nào được phân tích từ: {pdf_path}")
+        # ✅ Không kiểm tra cứng `document.pages`, vẫn lưu nếu có text/layout
+        if not document.text.strip():
+            print(f"⚠️ Không có văn bản OCR được từ: {pdf_path}")
             return False
 
-        # 💾 Lưu JSON đầu ra
+        # 💾 Lưu JSON đầu ra theo định dạng gốc protobuf
         document_dict = document._pb.__class__.to_dict(document._pb)
+
         with open(json_path, "w", encoding="utf-8") as f:
-            json.dump(document_dict, f, ensure_ascii=False)
+            json.dump(document_dict, f, ensure_ascii=False, indent=2)
 
         print(f"✅ Đã lưu file JSON: {json_path}")
         os.remove(pdf_path)
         return True
 
     except GoogleAPICallError as api_error:
-        print(f"❌ Lỗi từ Google API: {api_error.message}")
-        if hasattr(api_error, 'errors'):
-            for err in api_error.errors:
-                print(f" - Trường lỗi: {err.get('field', '')} → {err.get('description', '')}")
+        print(f"❌ Lỗi từ Google API: {api_error}")
     except Exception as e:
         print(f"❌ Lỗi khi OCR {pdf_path}: {e}")
     return False
