@@ -44,7 +44,7 @@ async def main():
 
         await browser.close()
 
-    print("📥 Đang tải PDF...")
+    print("📅 Đang tải PDF...")
     subprocess.run(["python", "download_pdf.py", detail_url], check=True)
 
     output_dir = Path("outputs")
@@ -56,7 +56,7 @@ async def main():
     latest_pdf = max(pdf_files, key=os.path.getmtime)
     print("📄 PDF mới nhất:", latest_pdf)
 
-    print("🧠 Đang OCR...")
+    print("🧐 Đang OCR...")
     try:
         subprocess.run(["python", "ocr_to_json.py", str(latest_pdf)], check=True)
     except subprocess.CalledProcessError as e:
@@ -71,4 +71,7 @@ async def main():
         print(f"❌ Lỗi khi extract sang Google Sheet: {e}")
         return
 
-    print("✅ Hoàn tất pipeline cho dòng đầu
+    print("✅ Hoàn tất pipeline cho dòng đầu.")
+
+if __name__ == "__main__":
+    asyncio.run(main())
