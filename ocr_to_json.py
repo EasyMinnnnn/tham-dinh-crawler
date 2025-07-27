@@ -18,16 +18,23 @@ except Exception as e:
     print(f"❌ GOOGLE_APPLICATION_CREDENTIALS_JSON không hợp lệ: {e}")
     sys.exit(1)
 
-# ⚙️ Khởi tạo Document AI client
+# ⚙️ Lấy các biến cấu hình
 project_id = os.environ.get("GOOGLE_PROJECT_ID")
 processor_id = os.environ.get("GOOGLE_PROCESSOR_ID")
-location = os.environ.get("GOOGLE_LOCATION", "eu")  # ✅ Mặc định dùng EU
+location = os.environ.get("GOOGLE_LOCATION", "eu")  # ✅ Mặc định là EU
 
 if not project_id or not processor_id:
     print("❌ Thiếu GOOGLE_PROJECT_ID hoặc GOOGLE_PROCESSOR_ID.")
     sys.exit(1)
 
-client = documentai.DocumentProcessorServiceClient(credentials=credentials)
+# ⚙️ Khởi tạo Document AI client với endpoint đúng region
+api_endpoint = f"{location}-documentai.googleapis.com"
+client_options = {"api_endpoint": api_endpoint}
+client = documentai.DocumentProcessorServiceClient(
+    credentials=credentials,
+    client_options=client_options
+)
+
 name = f"projects/{project_id}/locations/{location}/processors/{processor_id}"
 
 def process_file(pdf_path):
