@@ -1,6 +1,7 @@
 import os
+import sys
 import base64
-from urllib.parse import urljoin
+from urllib.parse import urlparse, urljoin
 from playwright.sync_api import sync_playwright
 
 def download_latest_pdf(base_url="https://mof.gov.vn", relative_link=""):
@@ -18,8 +19,8 @@ def download_latest_pdf(base_url="https://mof.gov.vn", relative_link=""):
         page.wait_for_timeout(7000)  # chờ render đầy đủ
 
         try:
-            print("📥 Đang tìm nút download theo ID '#download'...")
-            page.wait_for_selector("#download", timeout=20000)  # timeout dài hơn
+            print("📅 Đang tìm nút download theo ID '#download'...")
+            page.wait_for_selector("#download", timeout=20000)
 
             with page.expect_download(timeout=20000) as download_info:
                 page.click("#download")
@@ -54,9 +55,22 @@ def download_latest_pdf(base_url="https://mof.gov.vn", relative_link=""):
     return None
 
 if __name__ == "__main__":
-    pdf_path = download_latest_pdf(
-        relative_link="/bo-tai-chinh/danh-sach-tham-dinh-ve-gia/quyet-dinh-so-2320tb-btc-ve-viec-thu-hoi-giay-chung-nhan-du-dieu-kien-kinh-doanh-dich-vu-tham-dinh-gia"
-    )
+    pdf_path = None
+    if len(sys.argv) > 1:
+        url = sys.argv[1]
+        base = "https://mof.gov.vn"
+        rel = url
+        if url.startswith("http"):
+            parsed = urlparse(url)
+            base = f"{parsed.scheme}://{parsed.netloc}"
+            rel = parsed.path or ""
+            if parsed.query:
+                rel += f"?{parsed.query}"
+        pdf_path = download_latest_pdf(base_url=base, relative_link=rel)
+    else:
+        pdf_path = download_latest_pdf(
+            relative_link="/bo-tai-chinh/danh-sach-tham-dinh-ve-gia/quyet-dinh-so-2320tb-btc-ve-viec-thu-hoi-giay-chung-nhan-du-dieu-kien-kinh-doanh-dich-vu-tham-dinh-gia"
+        )
 
     if pdf_path:
         try:
