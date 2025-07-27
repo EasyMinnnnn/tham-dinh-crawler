@@ -34,25 +34,42 @@ if not project_id or not processor_id:
 client = documentai.DocumentProcessorServiceClient(credentials=credentials)
 name = f"projects/{project_id}/locations/{location}/processors/{processor_id}"
 
+
 def fallback_to_manual_json(pdf_path, json_path):
     base_name = os.path.basename(json_path)
-    fallback_candidates = [
-        os.path.join("preprocessed", base_name),                   # Ưu tiên theo tên file
-        "document (5).json"                                        # Fallback cuối
-    ]
+    manual_json_path = os.path.join("preprocessed", base_name)
 
-    for candidate in fallback_candidates:
-        if os.path.exists(candidate):
-            shutil.copy(candidate, json_path)
-            print(f"📥 Dùng fallback JSON từ: {candidate}")
-            return True
+    if os.path.exists(manual_json_path):
+        shutil.copy(manual_json_path, json_path)
+        print(f"🛠️ Dùng JSON thủ công từ preprocessed/: {manual_json_path}")
+        return True
 
-    print("⚠️ Không tìm thấy bất kỳ fallback JSON nào.")
+    # Nếu không có preprocessed thì tìm trong document (5).json
+    fallback_path = "document (5).json"
+    if not os.path.exists(fallback_path):
+        print("⚠️ Không tìm thấy JSON fallback tương ứng.")
+        return False
+
+    try:
+        with open(fallback_path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+            file_key = os.path.basename(pdf_path)
+            matches = [item for item in data if item.get("file_name") == file_key]
+            if matches:
+                with open(json_path, "w", encoding="utf-8") as out_f:
+                    json.dump(matches[0], out_f, ensure_ascii=False, indent=2)
+                print(f"🪂 Dùng fallback từ document (5).json cho {file_key}")
+                return True
+            else:
+                print(f"⚠️ Không tìm thấy {file_key} trong fallback document (5).json.")
+    except Exception as e:
+        print(f"❌ Lỗi đọc fallback document (5).json: {e}")
     return False
+
 
 def process_file(pdf_path):
     json_path = pdf_path.replace(".pdf", ".json")
-    print(f"\n🧠 OCR file: {pdf_path}")
+    print(f"🧠 OCR file: {pdf_path}")
     try:
         with open(pdf_path, "rb") as f:
             pdf_bytes = f.read()
@@ -64,7 +81,6 @@ def process_file(pdf_path):
 
         if not document.text.strip() and not document.pages:
             print(f"⚠️ Không có văn bản OCR được từ: {pdf_path}")
-            print(f"🔍 Kiểm tra fallback: preprocessed/{os.path.basename(json_path)}")
             return fallback_to_manual_json(pdf_path, json_path)
 
         document_dict = document._pb.__class__.to_dict(document._pb)
@@ -79,7 +95,8 @@ def process_file(pdf_path):
         print(f"❌ Lỗi từ Google API: {api_error}")
     except Exception as e:
         print(f"❌ Lỗi khi OCR {pdf_path}: {e}")
-    return False
+    return fallback_to_manual_json(pdf_path, json_path)
+
 
 if __name__ == "__main__":
     if len(sys.argv) > 1:
@@ -98,4 +115,4 @@ if __name__ == "__main__":
             path = os.path.join(input_dir, f)
             if process_file(path):
                 success += 1
-        print(f"\n📊 Tổng số file OCR thành công (bao gồm fallback): {success}")
+        print(f"\n📄 Tổng số file OCR thành công (bao gồm fallback): {success}")
