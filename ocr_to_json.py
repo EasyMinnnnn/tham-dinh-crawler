@@ -35,23 +35,22 @@ name = f"projects/{project_id}/locations/{location}/processors/{processor_id}"
 os.makedirs("preprocessed", exist_ok=True)
 
 def fallback_to_manual_json(pdf_path, json_path):
-    candidates = []
-
-    # 1. Dạng tên giữ nguyên
     base_name = os.path.basename(json_path)
-    candidates.append(os.path.join("preprocessed", base_name))
+    manual_json_path = os.path.join("preprocessed", base_name)
 
-    # 2. Dạng chỉ tên file (không folder outputs/)
-    only_name = os.path.basename(pdf_path).replace(".pdf", ".json")
-    if only_name != base_name:
-        candidates.append(os.path.join("preprocessed", only_name))
+    # ✅ Nếu tồn tại file chính xác → dùng
+    if os.path.exists(manual_json_path):
+        shutil.copy(manual_json_path, json_path)
+        print(f"🛠️ Dùng JSON thủ công từ preprocessed/: {manual_json_path}")
+        return True
 
-    # Kiểm tra từng khả năng
-    for candidate in candidates:
-        print(f"🔍 Kiểm tra fallback: {candidate}")
-        if os.path.exists(candidate):
-            shutil.copy(candidate, json_path)
-            print(f"🛠️ Dùng JSON thủ công từ preprocessed/: {candidate}")
+    # 🔍 Nếu không → tìm file gần đúng theo prefix
+    prefix = os.path.splitext(base_name)[0]
+    for fname in os.listdir("preprocessed"):
+        if fname.startswith(prefix) and fname.endswith(".json"):
+            fuzzy_path = os.path.join("preprocessed", fname)
+            shutil.copy(fuzzy_path, json_path)
+            print(f"🛠️ Fallback JSON gần đúng: {fuzzy_path}")
             return True
 
     print("⚠️ Không tìm thấy JSON thủ công tương ứng.")
@@ -59,7 +58,7 @@ def fallback_to_manual_json(pdf_path, json_path):
 
 def process_file(pdf_path):
     json_path = pdf_path.replace(".pdf", ".json")
-    print(f"\n🧠 OCR file: {pdf_path}")
+    print(f"🧠 OCR file: {pdf_path}")
     try:
         with open(pdf_path, "rb") as f:
             pdf_bytes = f.read()
@@ -69,6 +68,7 @@ def process_file(pdf_path):
         result = client.process_document(request=request)
         document = result.document
 
+        # Nếu không có text và không có pages → fallback
         if not document.text.strip() and not document.pages:
             print(f"⚠️ Không có văn bản OCR được từ: {pdf_path}")
             return fallback_to_manual_json(pdf_path, json_path)
