@@ -31,6 +31,9 @@ if not project_id or not processor_id:
 client = documentai.DocumentProcessorServiceClient(credentials=credentials)
 name = f"projects/{project_id}/locations/{location}/processors/{processor_id}"
 
+# 🧰 Tạo thư mục preprocessed nếu chưa tồn tại
+os.makedirs("preprocessed", exist_ok=True)
+
 def fallback_to_manual_json(pdf_path, json_path):
     base_name = os.path.basename(json_path)
     manual_json_path = os.path.join("preprocessed", base_name)
@@ -54,7 +57,7 @@ def process_file(pdf_path):
         result = client.process_document(request=request)
         document = result.document
 
-        # Nếu không có text và không có pages
+        # Nếu không có text và không có pages → fallback
         if not document.text.strip() and not document.pages:
             print(f"⚠️ Không có văn bản OCR được từ: {pdf_path}")
             return fallback_to_manual_json(pdf_path, json_path)
@@ -80,7 +83,8 @@ if __name__ == "__main__":
         if not os.path.exists(pdf_file):
             print(f"❌ File không tồn tại: {pdf_file}")
             sys.exit(1)
-        process_file(pdf_file)
+        success = process_file(pdf_file)
+        print(f"\n📄 Xử lý file {'thành công' if success else 'thất bại'}: {pdf_file}")
     else:
         input_dir = "outputs"
         files = [f for f in os.listdir(input_dir) if f.endswith(".pdf")]
