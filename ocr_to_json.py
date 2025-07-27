@@ -31,33 +31,31 @@ if not project_id or not processor_id:
 client = documentai.DocumentProcessorServiceClient(credentials=credentials)
 name = f"projects/{project_id}/locations/{location}/processors/{processor_id}"
 
-# 🧰 Tạo thư mục preprocessed nếu chưa tồn tại
-os.makedirs("preprocessed", exist_ok=True)
-
 def fallback_to_manual_json(pdf_path, json_path):
     base_name = os.path.basename(json_path)
     manual_json_path = os.path.join("preprocessed", base_name)
     print(f"🔍 Kiểm tra fallback: {manual_json_path}")
-    
+
     if os.path.exists(manual_json_path):
         shutil.copy(manual_json_path, json_path)
         print(f"🛠️ Dùng JSON thủ công: {manual_json_path}")
         return True
 
-    # 👉 Nếu không có, thử tìm file JSON bất kỳ trong preprocessed/ có prefix `document`
-    for fname in os.listdir("preprocessed"):
-        if fname.startswith("document") and fname.endswith(".json"):
-            alt_path = os.path.join("preprocessed", fname)
-            shutil.copy(alt_path, json_path)
-            print(f"🛠️ Dùng fallback JSON từ file khác: {alt_path}")
-            return True
+    # 👉 Nếu không có, tìm file gần nhất trong preprocessed/
+    all_jsons = [f for f in os.listdir("preprocessed") if f.endswith(".json")]
+    if all_jsons:
+        all_jsons.sort(key=lambda x: os.path.getmtime(os.path.join("preprocessed", x)), reverse=True)
+        fallback_path = os.path.join("preprocessed", all_jsons[0])
+        shutil.copy(fallback_path, json_path)
+        print(f"🛠️ Dùng JSON gần nhất: {fallback_path}")
+        return True
 
     print("⚠️ Không tìm thấy JSON fallback tương ứng.")
     return False
 
 def process_file(pdf_path):
     json_path = pdf_path.replace(".pdf", ".json")
-    print(f"🧠 OCR file: {pdf_path}")
+    print(f"\n🧠 OCR file: {pdf_path}")
     try:
         with open(pdf_path, "rb") as f:
             pdf_bytes = f.read()
@@ -67,7 +65,7 @@ def process_file(pdf_path):
         result = client.process_document(request=request)
         document = result.document
 
-        # Nếu không có text và không có pages → fallback
+        # Nếu không có văn bản và không có trang
         if not document.text.strip() and not document.pages:
             print(f"⚠️ Không có văn bản OCR được từ: {pdf_path}")
             return fallback_to_manual_json(pdf_path, json_path)
@@ -93,8 +91,7 @@ if __name__ == "__main__":
         if not os.path.exists(pdf_file):
             print(f"❌ File không tồn tại: {pdf_file}")
             sys.exit(1)
-        success = process_file(pdf_file)
-        print(f"\n📄 Xử lý file {'thành công' if success else 'thất bại'}: {pdf_file}")
+        process_file(pdf_file)
     else:
         input_dir = "outputs"
         files = [f for f in os.listdir(input_dir) if f.endswith(".pdf")]
@@ -103,4 +100,4 @@ if __name__ == "__main__":
             path = os.path.join(input_dir, f)
             if process_file(path):
                 success += 1
-        print(f"\n📄 Tổng số file OCR thành công (bao gồm fallback): {success}")
+        print(f"\n📊 Tổng số file đã xử lý thành công: {success}")
