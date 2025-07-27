@@ -37,6 +37,7 @@ os.makedirs("preprocessed", exist_ok=True)
 def fallback_to_manual_json(pdf_path, json_path):
     base_name = os.path.basename(json_path)
     manual_json_path = os.path.join("preprocessed", base_name)
+    print(f"🔍 Đang tìm JSON thủ công: {manual_json_path}")  # ✅ Log đường dẫn cụ thể
     if os.path.exists(manual_json_path):
         shutil.copy(manual_json_path, json_path)
         print(f"🛠️ Dùng JSON thủ công từ preprocessed/: {manual_json_path}")
