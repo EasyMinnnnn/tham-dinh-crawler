@@ -21,14 +21,15 @@ except Exception as e:
 # ⚙️ Lấy thông tin cấu hình từ biến môi trường
 project_id = os.environ.get("GOOGLE_PROJECT_ID")
 processor_id = os.environ.get("GOOGLE_PROCESSOR_ID")
-location = os.environ.get("GOOGLE_LOCATION", "eu")  # ✅ Mặc định là 'eu'
+location = os.environ.get("GOOGLE_LOCATION", "us")  # ✅ Mặc định là 'us'
 
 if not project_id or not processor_id:
     print("❌ Thiếu GOOGLE_PROJECT_ID hoặc GOOGLE_PROCESSOR_ID.")
     sys.exit(1)
 
-if location.lower() != "eu":
-    print(f"⚠️ Lưu ý: Processor của bạn đặt ở khu vực 'eu', nhưng biến GOOGLE_LOCATION đang là: '{location}'")
+# ✅ Kiểm tra nếu processor là 'us' nhưng biến khác
+if location.lower() != "us":
+    print(f"⚠️ Cảnh báo: Bạn đang dùng processor ở 'us' nhưng biến GOOGLE_LOCATION đang là '{location}'. Sẽ gây lỗi.")
 
 # 🔧 Khởi tạo Document AI client
 client = documentai.DocumentProcessorServiceClient(credentials=credentials)
@@ -46,7 +47,7 @@ def process_file(pdf_path):
         result = client.process_document(request=request)
         document = result.document
 
-        # 🧪 Kiểm tra layout (Layout Parser phải có page layout)
+        # 🧪 Kiểm tra layout
         if not document.pages:
             print(f"⚠️ Không có trang nào được phân tích từ: {pdf_path}")
             return False
@@ -61,7 +62,10 @@ def process_file(pdf_path):
         return True
 
     except GoogleAPICallError as api_error:
-        print(f"❌ Lỗi từ Google API: {api_error}")
+        print(f"❌ Lỗi từ Google API: {api_error.message}")
+        if hasattr(api_error, 'errors'):
+            for err in api_error.errors:
+                print(f" - Trường lỗi: {err.get('field', '')} → {err.get('description', '')}")
     except Exception as e:
         print(f"❌ Lỗi khi OCR {pdf_path}: {e}")
     return False
