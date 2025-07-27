@@ -35,25 +35,23 @@ name = f"projects/{project_id}/locations/{location}/processors/{processor_id}"
 os.makedirs("preprocessed", exist_ok=True)
 
 def fallback_to_manual_json(pdf_path, json_path):
-    base_name = os.path.basename(json_path)
-    manual_json_path = os.path.join("preprocessed", base_name)
+    base_name = os.path.splitext(os.path.basename(pdf_path))[0]
+    candidates = [
+        os.path.join("preprocessed", base_name + ".json"),
+    ]
 
-    # ✅ Nếu tồn tại file chính xác → dùng
-    if os.path.exists(manual_json_path):
-        shutil.copy(manual_json_path, json_path)
-        print(f"🛠️ Dùng JSON thủ công từ preprocessed/: {manual_json_path}")
-        return True
+    # ✨ Thử thêm các file có tên gần giống
+    for f in os.listdir("preprocessed"):
+        if base_name in f and f.endswith(".json"):
+            candidates.append(os.path.join("preprocessed", f))
 
-    # 🔍 Nếu không → tìm file gần đúng theo prefix
-    prefix = os.path.splitext(base_name)[0]
-    for fname in os.listdir("preprocessed"):
-        if fname.startswith(prefix) and fname.endswith(".json"):
-            fuzzy_path = os.path.join("preprocessed", fname)
-            shutil.copy(fuzzy_path, json_path)
-            print(f"🛠️ Fallback JSON gần đúng: {fuzzy_path}")
+    for path in candidates:
+        if os.path.exists(path):
+            shutil.copy(path, json_path)
+            print(f"🛠️ Dùng JSON fallback từ preprocessed/: {path}")
             return True
 
-    print("⚠️ Không tìm thấy JSON thủ công tương ứng.")
+    print("⚠️ Không tìm thấy JSON fallback tương ứng.")
     return False
 
 def process_file(pdf_path):
@@ -68,12 +66,12 @@ def process_file(pdf_path):
         result = client.process_document(request=request)
         document = result.document
 
-        # Nếu không có text và không có pages → fallback
+        # Ghi JSON kể cả khi text rỗng nhưng có nội dung
         if not document.text.strip() and not document.pages:
             print(f"⚠️ Không có văn bản OCR được từ: {pdf_path}")
             return fallback_to_manual_json(pdf_path, json_path)
 
-        # Ghi JSON từ protobuf
+        # Ghi kết quả OCR (protobuf to dict)
         document_dict = document._pb.__class__.to_dict(document._pb)
         with open(json_path, "w", encoding="utf-8") as f:
             json.dump(document_dict, f, ensure_ascii=False, indent=2)
