@@ -21,7 +21,7 @@ except Exception as e:
 # ⚙️ Khởi tạo Document AI client
 project_id = os.environ.get("GOOGLE_PROJECT_ID")
 processor_id = os.environ.get("GOOGLE_PROCESSOR_ID")
-location = "us"
+location = os.environ.get("GOOGLE_LOCATION", "eu")  # ✅ Mặc định dùng EU
 
 if not project_id or not processor_id:
     print("❌ Thiếu GOOGLE_PROJECT_ID hoặc GOOGLE_PROCESSOR_ID.")
