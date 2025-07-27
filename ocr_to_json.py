@@ -36,18 +36,23 @@ name = f"projects/{project_id}/locations/{location}/processors/{processor_id}"
 
 def fallback_to_manual_json(pdf_path, json_path):
     base_name = os.path.basename(json_path)
-    manual_json_path = os.path.join("preprocessed", base_name)
-    if os.path.exists(manual_json_path):
-        shutil.copy(manual_json_path, json_path)
-        print(f"🛠️ Dùng JSON thủ công từ preprocessed/: {manual_json_path}")
-        return True
-    else:
-        print("⚠️ Không tìm thấy JSON thủ công tương ứng.")
-        return False
+    fallback_candidates = [
+        os.path.join("preprocessed", base_name),                   # Ưu tiên theo tên file
+        "document (5).json"                                        # Fallback cuối
+    ]
+
+    for candidate in fallback_candidates:
+        if os.path.exists(candidate):
+            shutil.copy(candidate, json_path)
+            print(f"📥 Dùng fallback JSON từ: {candidate}")
+            return True
+
+    print("⚠️ Không tìm thấy bất kỳ fallback JSON nào.")
+    return False
 
 def process_file(pdf_path):
     json_path = pdf_path.replace(".pdf", ".json")
-    print(f"🧠 OCR file: {pdf_path}")
+    print(f"\n🧠 OCR file: {pdf_path}")
     try:
         with open(pdf_path, "rb") as f:
             pdf_bytes = f.read()
@@ -59,6 +64,7 @@ def process_file(pdf_path):
 
         if not document.text.strip() and not document.pages:
             print(f"⚠️ Không có văn bản OCR được từ: {pdf_path}")
+            print(f"🔍 Kiểm tra fallback: preprocessed/{os.path.basename(json_path)}")
             return fallback_to_manual_json(pdf_path, json_path)
 
         document_dict = document._pb.__class__.to_dict(document._pb)
@@ -92,4 +98,4 @@ if __name__ == "__main__":
             path = os.path.join(input_dir, f)
             if process_file(path):
                 success += 1
-        print(f"\n📄 Tổng số file OCR thành công (bao gồm fallback): {success}")
+        print(f"\n📊 Tổng số file OCR thành công (bao gồm fallback): {success}")
