@@ -1,6 +1,7 @@
 import os
 import sys
 import json
+import shutil
 from google.cloud import documentai_v1 as documentai
 from google.oauth2 import service_account
 from google.api_core.exceptions import GoogleAPICallError
@@ -18,18 +19,28 @@ except Exception as e:
     print(f"❌ GOOGLE_APPLICATION_CREDENTIALS_JSON không hợp lệ: {e}")
     sys.exit(1)
 
-# ⚙️ Lấy thông tin cấu hình từ biến môi trường
+# ⚙️ Thông tin cấu hình
 project_id = os.environ.get("GOOGLE_PROJECT_ID")
 processor_id = os.environ.get("GOOGLE_PROCESSOR_ID")
-location = os.environ.get("GOOGLE_LOCATION", "us")  # ⚠️ Đã sửa default là 'us'
+location = os.environ.get("GOOGLE_LOCATION", "us")
 
 if not project_id or not processor_id:
     print("❌ Thiếu GOOGLE_PROJECT_ID hoặc GOOGLE_PROCESSOR_ID.")
     sys.exit(1)
 
-# 🔧 Khởi tạo Document AI client
 client = documentai.DocumentProcessorServiceClient(credentials=credentials)
 name = f"projects/{project_id}/locations/{location}/processors/{processor_id}"
+
+def fallback_to_manual_json(pdf_path, json_path):
+    base_name = os.path.basename(json_path)
+    manual_json_path = os.path.join("preprocessed", base_name)
+    if os.path.exists(manual_json_path):
+        shutil.copy(manual_json_path, json_path)
+        print(f"🛠️ Dùng JSON thủ công từ preprocessed/: {manual_json_path}")
+        return True
+    else:
+        print("⚠️ Không tìm thấy JSON thủ công tương ứng.")
+        return False
 
 def process_file(pdf_path):
     json_path = pdf_path.replace(".pdf", ".json")
@@ -43,14 +54,13 @@ def process_file(pdf_path):
         result = client.process_document(request=request)
         document = result.document
 
-        # ✅ Không kiểm tra cứng `document.pages`, vẫn lưu nếu có text/layout
-        if not document.text.strip():
+        # Nếu không có text và không có pages
+        if not document.text.strip() and not document.pages:
             print(f"⚠️ Không có văn bản OCR được từ: {pdf_path}")
-            return False
+            return fallback_to_manual_json(pdf_path, json_path)
 
-        # 💾 Lưu JSON đầu ra theo định dạng gốc protobuf
+        # Ghi JSON từ protobuf
         document_dict = document._pb.__class__.to_dict(document._pb)
-
         with open(json_path, "w", encoding="utf-8") as f:
             json.dump(document_dict, f, ensure_ascii=False, indent=2)
 
@@ -79,4 +89,4 @@ if __name__ == "__main__":
             path = os.path.join(input_dir, f)
             if process_file(path):
                 success += 1
-        print(f"\n📄 Tổng số file OCR thành công: {success}")
+        print(f"\n📄 Tổng số file OCR thành công (bao gồm fallback): {success}")
