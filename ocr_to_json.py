@@ -7,7 +7,6 @@ from google.cloud import documentai_v1 as documentai
 from google.oauth2 import service_account
 from google.api_core.exceptions import GoogleAPICallError
 
-import base64
 from googleapiclient.discovery import build
 from google.oauth2.service_account import Credentials as SheetCredentials
 
@@ -57,7 +56,7 @@ def push_to_google_sheet(json_data: dict, sheet_range="Sheet1!A1"):
             valueInputOption="RAW",
             body={"values": [[json_str]]}
         ).execute()
-        print("📤 Đã push nội dung fallback JSON lên Google Sheet.")
+        print("📤 Đã push nội dung JSON lên Google Sheet.")
     except Exception as e:
         print(f"❌ Lỗi khi push lên Google Sheet: {e}")
 
@@ -66,6 +65,9 @@ def fallback_from_manual_json(pdf_path, json_path):
     manual_json_path = os.path.join("preprocessed", base_name)
     if os.path.exists(manual_json_path):
         shutil.copy(manual_json_path, json_path)
+        with open(json_path, "r", encoding="utf-8") as f:
+            document_data = json.load(f)
+            push_to_google_sheet(document_data)
         print(f"🛠️ Dùng JSON thủ công từ preprocessed/: {manual_json_path}")
         return True
     return False
@@ -94,8 +96,7 @@ def fallback_from_any_document_json(pdf_path, json_path):
                         with open(json_path, "w", encoding="utf-8") as out:
                             json.dump(document_data, out, ensure_ascii=False, indent=2)
 
-                        push_to_google_sheet(document_data, sheet_range="Sheet1!A1")
-
+                        push_to_google_sheet(document_data)
                         print(f"🛠️ Fallback thành công từ {doc_file} (record {idx}) cho: {pdf_basename}")
                         return True
                     else:
@@ -129,7 +130,8 @@ def process_file(pdf_path):
         with open(json_path, "w", encoding="utf-8") as f:
             json.dump(document_dict, f, ensure_ascii=False, indent=2)
 
-        print(f"✅ Đã lưu file JSON: {json_path}")
+        push_to_google_sheet(document_dict)
+        print(f"✅ Đã lưu và gửi JSON: {json_path}")
         os.remove(pdf_path)
         return True
 
