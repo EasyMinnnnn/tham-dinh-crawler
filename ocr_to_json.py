@@ -8,6 +8,7 @@ from google.oauth2 import service_account
 from google.api_core.exceptions import GoogleAPICallError
 from googleapiclient.discovery import build
 from google.oauth2.service_account import Credentials as SheetCredentials
+from google.protobuf.json_format import MessageToDict  # ✅ Thêm dòng này
 
 os.makedirs("preprocessed", exist_ok=True)
 
@@ -145,14 +146,14 @@ def process_file(pdf_path):
                 return True
             return False
 
-        # Ghi lại toàn bộ kết quả Document vào file json
-        document_dict = document._pb.__class__.to_dict(document._pb)
+        # ✅ Sửa lỗi to_dict
+        document_dict = MessageToDict(document._pb, preserving_proto_field_name=True)
+
         with open(json_path, "w", encoding="utf-8") as f:
             json.dump(document_dict, f, ensure_ascii=False, indent=2)
 
         print(f"✅ Đã lưu file JSON: {json_path}")
 
-        # Trích bảng và đẩy lên sheet
         tables = extract_table_from_document(document)
         if tables:
             push_table_to_google_sheet(tables[0])  # chỉ đẩy bảng đầu tiên
