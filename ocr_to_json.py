@@ -116,12 +116,7 @@ def process_file(pdf_path):
         if not document.text.strip() and not document.pages:
             print(f"⚠️ Không có văn bản OCR được từ: {pdf_path}")
             if fallback_from_manual_json(pdf_path, json_path) or fallback_from_any_document_json(pdf_path, json_path):
-                try:
-                    with open(json_path, "r", encoding="utf-8") as f:
-                        fallback_data = json.load(f)
-                        push_to_google_sheet(fallback_data, sheet_range="Sheet1!A1")
-                except Exception as e:
-                    print(f"❌ Lỗi khi đọc và push fallback JSON: {e}")
+                print("📁 Đã fallback nhưng KHÔNG push lên Google Sheet vì không có kết quả OCR.")
                 return True
             return False
 
