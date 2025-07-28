@@ -7,6 +7,10 @@ from google.cloud import documentai_v1 as documentai
 from google.oauth2 import service_account
 from google.api_core.exceptions import GoogleAPICallError
 
+import base64
+from googleapiclient.discovery import build
+from google.oauth2.service_account import Credentials as SheetCredentials
+
 os.makedirs("preprocessed", exist_ok=True)
 
 # 🔐 Load credentials
@@ -32,6 +36,30 @@ if not project_id or not processor_id:
 
 client = documentai.DocumentProcessorServiceClient(credentials=credentials)
 name = f"projects/{project_id}/locations/{location}/processors/{processor_id}"
+
+def push_to_google_sheet(json_data: dict, sheet_range="Sheet1!A1"):
+    try:
+        sheet_json = os.environ.get("GOOGLE_CREDENTIALS_JSON")
+        sheet_id = os.environ.get("GOOGLE_SHEET_ID")
+        if not sheet_json or not sheet_id:
+            print("⚠️ Không có biến GOOGLE_CREDENTIALS_JSON hoặc GOOGLE_SHEET_ID.")
+            return
+
+        creds_dict = json.loads(sheet_json)
+        creds = SheetCredentials.from_service_account_info(creds_dict)
+        service = build("sheets", "v4", credentials=creds)
+        sheet = service.spreadsheets()
+
+        json_str = json.dumps(json_data, ensure_ascii=False, indent=2)
+        sheet.values().update(
+            spreadsheetId=sheet_id,
+            range=sheet_range,
+            valueInputOption="RAW",
+            body={"values": [[json_str]]}
+        ).execute()
+        print("📤 Đã push nội dung fallback JSON lên Google Sheet.")
+    except Exception as e:
+        print(f"❌ Lỗi khi push lên Google Sheet: {e}")
 
 def fallback_from_manual_json(pdf_path, json_path):
     base_name = os.path.basename(json_path)
@@ -62,8 +90,12 @@ def fallback_from_any_document_json(pdf_path, json_path):
                     if not input_source:
                         continue
                     if pdf_basename in input_source:
+                        document_data = record.get("document", {})
                         with open(json_path, "w", encoding="utf-8") as out:
-                            json.dump(record.get("document", {}), out, ensure_ascii=False, indent=2)
+                            json.dump(document_data, out, ensure_ascii=False, indent=2)
+
+                        push_to_google_sheet(document_data, sheet_range="Sheet1!A1")
+
                         print(f"🛠️ Fallback thành công từ {doc_file} (record {idx}) cho: {pdf_basename}")
                         return True
                     else:
