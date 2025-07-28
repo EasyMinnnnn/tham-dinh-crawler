@@ -23,6 +23,30 @@ jobs:
           pip install -r requirements.txt
           playwright install chromium
 
+      - name: 🐞 Debug fallback JSON files
+        run: |
+          echo "🗂️ Liệt kê các file JSON hiện có trong thư mục root:"
+          ls -al
+          echo "📂 Nội dung các file document*.json nếu có:"
+          found_any=false
+          for f in document*.json; do
+            found_any=true
+            echo "🧾 ---- $f ----"
+            cat "$f" || echo "⚠️ Không đọc được $f"
+          done
+          if [ "$found_any" = false ]; then
+            echo "❌ Không có file document*.json nào để fallback."
+          fi
+
+      - name: 🧾 Debug thư mục preprocessed/
+        run: |
+          echo "📂 Kiểm tra thư mục preprocessed/:"
+          if [ -d "preprocessed" ]; then
+            ls -al preprocessed
+          else
+            echo "⚠️ Thư mục preprocessed/ không tồn tại"
+          fi
+
       - name: ⚙️ Chạy run_one_pipeline.py
         env:
           GOOGLE_APPLICATION_CREDENTIALS_JSON: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS_JSON }}  # Cho Document AI
