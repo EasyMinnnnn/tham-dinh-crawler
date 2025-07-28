@@ -15,7 +15,6 @@ async def main():
         print("🌐 Đã vào trang danh sách.")
 
         await page.wait_for_timeout(5000)
-
         html = await page.content()
         with open("mof_debug.html", "w", encoding="utf-8") as f:
             f.write(html)
@@ -56,33 +55,11 @@ async def main():
     latest_pdf = max(pdf_files, key=os.path.getmtime)
     print("📄 PDF mới nhất:", latest_pdf)
 
-    print("🧐 Đang OCR...")
-
-    # ✅ Ghi đè tạm thời GOOGLE_PROCESSOR_ID bằng GOOGLE_PROCESSOR_ID_OCR
-    processor_id_ocr = os.environ.get("GOOGLE_PROCESSOR_ID_OCR")
-    if not processor_id_ocr:
-        print("❌ Thiếu GOOGLE_PROCESSOR_ID_OCR.")
-        return
-
-    original_processor_id = os.environ.get("GOOGLE_PROCESSOR_ID")
-    os.environ["GOOGLE_PROCESSOR_ID"] = processor_id_ocr
-
+    print("🧐 Đang OCR và extract bảng...")
     try:
         subprocess.run(["python", "ocr_to_json.py", str(latest_pdf)], check=True)
     except subprocess.CalledProcessError as e:
         print(f"❌ Lỗi khi chạy OCR: {e}")
-        return
-    finally:
-        # ✅ Khôi phục lại processor gốc
-        if original_processor_id:
-            os.environ["GOOGLE_PROCESSOR_ID"] = original_processor_id
-
-    json_file = str(latest_pdf).replace(".pdf", ".json")
-    print("📊 Đang extract dữ liệu sang Google Sheet...")
-    try:
-        subprocess.run(["python", "extract_to_sheet.py", json_file], check=True)
-    except subprocess.CalledProcessError as e:
-        print(f"❌ Lỗi khi extract sang Google Sheet: {e}")
         return
 
     print("✅ Hoàn tất pipeline cho dòng đầu.")
