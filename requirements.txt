@@ -6,3 +6,4 @@ google-api-core==2.18.0
 google-cloud-documentai==2.20.0
 requests==2.31.0
 beautifulsoup4==4.12.3
+google-api-python-client
