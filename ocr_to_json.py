@@ -44,26 +44,33 @@ def fallback_from_manual_json(pdf_path, json_path):
 
 def fallback_from_any_document_json(pdf_path, json_path):
     pdf_basename = os.path.basename(pdf_path)
-    document_files = [f for f in os.listdir(".") if re.match(r"document.*\\.json$", f)]
+    document_files = [f for f in os.listdir(".") if re.match(r"document.*\.json$", f)]
     if not document_files:
         print("⚠️ Không tìm thấy file document*.json nào để fallback.")
         return False
 
+    print(f"🔎 Đang thử fallback từ các file: {document_files}")
     for doc_file in sorted(document_files):
         try:
             with open(doc_file, "r", encoding="utf-8") as f:
                 data = json.load(f)
+
             if isinstance(data, list):
-                for record in data:
+                print(f"📄 File {doc_file} chứa {len(data)} record.")
+                for idx, record in enumerate(data):
                     input_source = record.get("inputSource", "")
+                    if not input_source:
+                        continue
                     if pdf_basename in input_source:
                         with open(json_path, "w", encoding="utf-8") as out:
                             json.dump(record.get("document", {}), out, ensure_ascii=False, indent=2)
-                        print(f"🛠️ Fallback từ {doc_file} cho file: {pdf_basename}")
+                        print(f"🛠️ Fallback thành công từ {doc_file} (record {idx}) cho: {pdf_basename}")
                         return True
+                    else:
+                        print(f"⛔ Không khớp: {input_source} với {pdf_basename}")
         except Exception as e:
             print(f"❌ Lỗi đọc {doc_file}: {e}")
-    print(f"⚠️ Không tìm thấy khớp trong document*.json cho: {pdf_basename}")
+    print(f"⚠️ Không tìm thấy khớp trong bất kỳ document*.json nào cho: {pdf_basename}")
     return False
 
 def process_file(pdf_path):
