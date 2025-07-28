@@ -1,8 +1,8 @@
 import os
 import sys
 import json
-import glob
 import shutil
+import re
 from google.cloud import documentai_v1 as documentai
 from google.oauth2 import service_account
 from google.api_core.exceptions import GoogleAPICallError
@@ -44,25 +44,26 @@ def fallback_from_manual_json(pdf_path, json_path):
 
 def fallback_from_any_document_json(pdf_path, json_path):
     pdf_basename = os.path.basename(pdf_path)
-    candidate_files = glob.glob("document*.json")
-    if not candidate_files:
+    document_files = [f for f in os.listdir(".") if re.match(r"document.*\\.json$", f)]
+    if not document_files:
         print("⚠️ Không tìm thấy file document*.json nào để fallback.")
         return False
 
-    for candidate in candidate_files:
+    for doc_file in sorted(document_files):
         try:
-            with open(candidate, "r", encoding="utf-8") as f:
+            with open(doc_file, "r", encoding="utf-8") as f:
                 data = json.load(f)
-            for record in data:
-                input_source = record.get("inputSource", "")
-                if pdf_basename in input_source:
-                    with open(json_path, "w", encoding="utf-8") as out:
-                        json.dump(record.get("document", {}), out, ensure_ascii=False, indent=2)
-                    print(f"🛠️ Fallback từ {candidate} cho file: {pdf_basename}")
-                    return True
+            if isinstance(data, list):
+                for record in data:
+                    input_source = record.get("inputSource", "")
+                    if pdf_basename in input_source:
+                        with open(json_path, "w", encoding="utf-8") as out:
+                            json.dump(record.get("document", {}), out, ensure_ascii=False, indent=2)
+                        print(f"🛠️ Fallback từ {doc_file} cho file: {pdf_basename}")
+                        return True
         except Exception as e:
-            print(f"❌ Lỗi đọc {candidate}: {e}")
-    print(f"⚠️ Không tìm thấy khớp trong bất kỳ document*.json nào cho: {pdf_basename}")
+            print(f"❌ Lỗi đọc {doc_file}: {e}")
+    print(f"⚠️ Không tìm thấy khớp trong document*.json cho: {pdf_basename}")
     return False
 
 def process_file(pdf_path):
