@@ -15,7 +15,7 @@ os.makedirs("preprocessed", exist_ok=True)
 # 🔐 Load credentials
 credentials_json = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS_JSON")
 if not credentials_json:
-    print("❌ Thiếu biến môi trường GOOGLE_APPLICATION_CREDENTIALS_JSON.")
+    print("❌ Thiếu biến GOOGLE_APPLICATION_CREDENTIALS_JSON.")
     sys.exit(1)
 
 try:
@@ -31,12 +31,12 @@ processor_id_ocr = os.environ.get("GOOGLE_PROCESSOR_ID_OCR")  # Document OCR
 location = os.environ.get("GOOGLE_LOCATION", "us")
 
 if not project_id or not processor_id or not processor_id_ocr:
-    print("❌ Thiếu GOOGLE_PROJECT_ID hoặc GOOGLE_PROCESSOR_ID hoặc GOOGLE_PROCESSOR_ID_OCR.")
+    print("❌ Thiếu GOOGLE_PROJECT_ID hoặc PROCESSOR_ID hoặc PROCESSOR_ID_OCR.")
     sys.exit(1)
 
 client = documentai.DocumentProcessorServiceClient(credentials=credentials)
-name_form = f"projects/{project_id}/locations/{location}/processors/{processor_id}"
-name_ocr = f"projects/{project_id}/locations/{location}/processors/{processor_id_ocr}"
+name_form_parser = f"projects/{project_id}/locations/{location}/processors/{processor_id}"
+name_doc_ocr = f"projects/{project_id}/locations/{location}/processors/{processor_id_ocr}"
 
 def extract_text(text_anchor, text):
     if not text_anchor.text_segments:
@@ -66,7 +66,7 @@ def extract_table_from_document(document):
 def extract_company_name_from_ocr(pdf_bytes):
     try:
         raw_document = documentai.RawDocument(content=pdf_bytes, mime_type="application/pdf")
-        request = documentai.ProcessRequest(name=name_ocr, raw_document=raw_document)
+        request = documentai.ProcessRequest(name=name_doc_ocr, raw_document=raw_document)
         result = client.process_document(request=request)
         text = result.document.text
 
@@ -83,7 +83,7 @@ def push_table_to_google_sheet(table_rows, sheet_range="Sheet1!A1"):
         sheet_json = os.environ.get("GOOGLE_CREDENTIALS_JSON")
         sheet_id = os.environ.get("GOOGLE_SHEET_ID")
         if not sheet_json or not sheet_id:
-            print("⚠️ Không có biến GOOGLE_CREDENTIALS_JSON hoặc GOOGLE_SHEET_ID.")
+            print("⚠️ Thiếu GOOGLE_CREDENTIALS_JSON hoặc GOOGLE_SHEET_ID.")
             return
 
         creds_dict = json.loads(sheet_json)
@@ -101,36 +101,41 @@ def push_table_to_google_sheet(table_rows, sheet_range="Sheet1!A1"):
             valueInputOption="RAW",
             body={"values": table_rows}
         ).execute()
-        print("📄 Đã push bảng lên Google Sheet.")
+        print("📤 Đã push bảng lên Google Sheet.")
     except Exception as e:
         print(f"❌ Lỗi khi push bảng lên Google Sheet: {e}")
 
 def process_file(pdf_path):
+    json_path = pdf_path.replace(".pdf", ".json")
     print(f"\n📄 Đang xử lý file: {pdf_path}")
     try:
         with open(pdf_path, "rb") as f:
             pdf_bytes = f.read()
 
+        # 1️⃣ OCR tên công ty trước bằng Document OCR
         company_name = extract_company_name_from_ocr(pdf_bytes)
 
+        # 2️⃣ Trích bảng bằng Form Parser
         raw_document = documentai.RawDocument(content=pdf_bytes, mime_type="application/pdf")
-        request = documentai.ProcessRequest(name=name_form, raw_document=raw_document)
+        request = documentai.ProcessRequest(name=name_form_parser, raw_document=raw_document)
         result = client.process_document(request=request)
         document = result.document
 
+        if not document.text.strip():
+            print(f"⚠️ Không có văn bản OCR được từ: {pdf_path}")
+            return False
+
         document_dict = MessageToDict(document._pb, preserving_proto_field_name=True)
-        json_path = pdf_path.replace(".pdf", ".json")
         with open(json_path, "w", encoding="utf-8") as f:
             json.dump(document_dict, f, ensure_ascii=False, indent=2)
         print(f"✅ Đã lưu file JSON: {json_path}")
 
         tables = extract_table_from_document(document)
         if tables:
-            final_table = [[company_name]] + tables[0] if company_name else tables[0]
-            push_table_to_google_sheet(final_table)
+            full_table = [[company_name]] + tables[0] if company_name else tables[0]
+            push_table_to_google_sheet(full_table)
         else:
             print("⚠️ Không có bảng nào để push.")
-
         os.remove(pdf_path)
         return True
 
@@ -141,20 +146,12 @@ def process_file(pdf_path):
     return False
 
 if __name__ == "__main__":
-    if len(sys.argv) > 1:
-        pdf_file = sys.argv[1]
-        if not os.path.exists(pdf_file):
-            print(f"❌ File không tồn tại: {pdf_file}")
-            sys.exit(1)
-        success = process_file(pdf_file)
-        print(f"\n📄 Xử lý file {'thành công' if success else 'thất bại'}: {pdf_file}")
-    else:
-        input_dir = "outputs"
-        os.makedirs(input_dir, exist_ok=True)
-        files = [f for f in os.listdir(input_dir) if f.endswith(".pdf")]
-        success = 0
-        for f in files:
-            path = os.path.join(input_dir, f)
-            if process_file(path):
-                success += 1
-        print(f"\n📊 Tổng số file đã xử lý thành công: {success}")
+    input_dir = "outputs"
+    os.makedirs(input_dir, exist_ok=True)
+    files = [f for f in os.listdir(input_dir) if f.endswith(".pdf")]
+    success = 0
+    for f in files:
+        path = os.path.join(input_dir, f)
+        if process_file(path):
+            success += 1
+    print(f"\n📊 Tổng số file đã xử lý thành công: {success}")
