@@ -1,0 +1,433 @@
+[
+  {
+    "inputSource": "768f4b6c-fd1f-42a9-8d22-f1f9a0244a9c.pdf",
+    "document": {
+      "documentLayout": {
+        "blocks": [
+          {
+            "blockId": "1",
+            "textBlock": {
+              "text": "Ký bởi: BỘ TÀI CHÍNH Cơ quan: 28 Trần Hưng Đạo Thời gian ký: 21/07/2025 16:45:01 +07:00",
+              "type": "paragraph"
+            },
+            "pageSpan": {
+              "pageStart": 1,
+              "pageEnd": 1
+            }
+          },
+          {
+            "blockId": "2",
+            "textBlock": {
+              "text": "BỘ TÀI CHÍNH",
+              "type": "paragraph"
+            },
+            "pageSpan": {
+              "pageStart": 1,
+              "pageEnd": 1
+            }
+          },
+          {
+            "blockId": "3",
+            "textBlock": {
+              "text": "Số: 586/TB-BTC",
+              "type": "paragraph"
+            },
+            "pageSpan": {
+              "pageStart": 1,
+              "pageEnd": 1
+            }
+          },
+          {
+            "blockId": "4",
+            "textBlock": {
+              "text": "CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM",
+              "type": "paragraph"
+            },
+            "pageSpan": {
+              "pageStart": 1,
+              "pageEnd": 1
+            }
+          },
+          {
+            "blockId": "5",
+            "textBlock": {
+              "text": "Độc lập - Tự do - Hạnh phúc",
+              "type": "paragraph"
+            },
+            "pageSpan": {
+              "pageStart": 1,
+              "pageEnd": 1
+            }
+          },
+          {
+            "blockId": "6",
+            "textBlock": {
+              "text": "Hà Nội, ngày 21 tháng 7 năm 2025",
+              "type": "paragraph"
+            },
+            "pageSpan": {
+              "pageStart": 1,
+              "pageEnd": 1
+            }
+          },
+          {
+            "blockId": "7",
+            "textBlock": {
+              "text": "THÔNG BÁO",
+              "type": "heading-1",
+              "blocks": [
+                {
+                  "blockId": "8",
+                  "textBlock": {
+                    "text": "Về việc điều chỉnh thông tin về thẩm định viên về giá năm 2025 tại Công ty CP Thẩm định giá An Phú",
+                    "type": "paragraph"
+                  },
+                  "pageSpan": {
+                    "pageStart": 1,
+                    "pageEnd": 1
+                  }
+                },
+                {
+                  "blockId": "9",
+                  "textBlock": {
+                    "text": "Căn cứ Nghị định số 78/2024/NĐ-CP ngày 01 tháng 7 năm 2024 của Chính phủ quy định chi tiết một số điều của Luật Giá về thẩm định giá;",
+                    "type": "paragraph"
+                  },
+                  "pageSpan": {
+                    "pageStart": 1,
+                    "pageEnd": 1
+                  }
+                },
+                {
+                  "blockId": "10",
+                  "textBlock": {
+                    "text": "Trên cơ sở đề nghị của các doanh nghiệp thẩm định giá và việc rà soát, điều chỉnh danh sách thẩm định viên về giá tại doanh nghiệp,",
+                    "type": "paragraph"
+                  },
+                  "pageSpan": {
+                    "pageStart": 1,
+                    "pageEnd": 1
+                  }
+                },
+                {
+                  "blockId": "11",
+                  "textBlock": {
+                    "text": "Bộ Tài chính thông báo điều chỉnh thông tin về thẩm định viên về giá năm 2025 tại Công ty CP Thẩm định giá An Phú (351/TĐG) như sau:",
+                    "type": "paragraph"
+                  },
+                  "pageSpan": {
+                    "pageStart": 1,
+                    "pageEnd": 1
+                  }
+                },
+                {
+                  "blockId": "12",
+                  "tableBlock": {
+                    "bodyRows": [
+                      {
+                        "cells": [
+                          {
+                            "blocks": [
+                              {
+                                "blockId": "13",
+                                "textBlock": {
+                                  "text": "Thẩm định viên",
+                                  "type": "paragraph"
+                                },
+                                "pageSpan": {
+                                  "pageStart": 1,
+                                  "pageEnd": 1
+                                }
+                              }
+                            ],
+                            "rowSpan": 1,
+                            "colSpan": 1
+                          },
+                          {
+                            "blocks": [
+                              {
+                                "blockId": "14",
+                                "textBlock": {
+                                  "text": "Số thẻ",
+                                  "type": "paragraph"
+                                },
+                                "pageSpan": {
+                                  "pageStart": 1,
+                                  "pageEnd": 1
+                                }
+                              }
+                            ],
+                            "rowSpan": 1,
+                            "colSpan": 1
+                          },
+                          {
+                            "blocks": [
+                              {
+                                "blockId": "15",
+                                "textBlock": {
+                                  "text": "Nội dung thông báo",
+                                  "type": "paragraph"
+                                },
+                                "pageSpan": {
+                                  "pageStart": 1,
+                                  "pageEnd": 1
+                                }
+                              }
+                            ],
+                            "rowSpan": 1,
+                            "colSpan": 1
+                          },
+                          {
+                            "blocks": [
+                              {
+                                "blockId": "16",
+                                "textBlock": {
+                                  "text": "Ngày hiệu lực",
+                                  "type": "paragraph"
+                                },
+                                "pageSpan": {
+                                  "pageStart": 1,
+                                  "pageEnd": 1
+                                }
+                              }
+                            ],
+                            "rowSpan": 1,
+                            "colSpan": 1
+                          },
+                          {
+                            "blocks": [
+                              {
+                                "blockId": "17",
+                                "textBlock": {
+                                  "text": "Chức danh đăng ký hành nghề",
+                                  "type": "paragraph"
+                                },
+                                "pageSpan": {
+                                  "pageStart": 1,
+                                  "pageEnd": 1
+                                }
+                              }
+                            ],
+                            "rowSpan": 1,
+                            "colSpan": 1
+                          }
+                        ]
+                      },
+                      {
+                        "cells": [
+                          {
+                            "blocks": [
+                              {
+                                "blockId": "18",
+                                "textBlock": {
+                                  "text": "Cao Xuân Cảnh",
+                                  "type": "paragraph"
+                                },
+                                "pageSpan": {
+                                  "pageStart": 1,
+                                  "pageEnd": 1
+                                }
+                              }
+                            ],
+                            "rowSpan": 1,
+                            "colSpan": 1
+                          },
+                          {
+                            "blocks": [
+                              {
+                                "blockId": "19",
+                                "textBlock": {
+                                  "text": "XIII18.1913",
+                                  "type": "paragraph"
+                                },
+                                "pageSpan": {
+                                  "pageStart": 1,
+                                  "pageEnd": 1
+                                }
+                              }
+                            ],
+                            "rowSpan": 1,
+                            "colSpan": 1
+                          },
+                          {
+                            "blocks": [
+                              {
+                                "blockId": "20",
+                                "textBlock": {
+                                  "text": "Đại diện pháp luật, Điều chỉnh chức danh đăng ký hành nghề",
+                                  "type": "paragraph"
+                                },
+                                "pageSpan": {
+                                  "pageStart": 1,
+                                  "pageEnd": 1
+                                }
+                              }
+                            ],
+                            "rowSpan": 1,
+                            "colSpan": 1
+                          },
+                          {
+                            "blocks": [
+                              {
+                                "blockId": "21",
+                                "textBlock": {
+                                  "text": "Kể từ ngày 17/7/2025",
+                                  "type": "paragraph"
+                                },
+                                "pageSpan": {
+                                  "pageStart": 1,
+                                  "pageEnd": 1
+                                }
+                              }
+                            ],
+                            "rowSpan": 1,
+                            "colSpan": 1
+                          },
+                          {
+                            "blocks": [
+                              {
+                                "blockId": "22",
+                                "textBlock": {
+                                  "text": "Chủ tịch Hội đồng quản trị",
+                                  "type": "paragraph"
+                                },
+                                "pageSpan": {
+                                  "pageStart": 1,
+                                  "pageEnd": 1
+                                }
+                              }
+                            ],
+                            "rowSpan": 1,
+                            "colSpan": 1
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  "pageSpan": {
+                    "pageStart": 1,
+                    "pageEnd": 1
+                  }
+                },
+                {
+                  "blockId": "23",
+                  "textBlock": {
+                    "text": "。",
+                    "type": "paragraph"
+                  },
+                  "pageSpan": {
+                    "pageStart": 1,
+                    "pageEnd": 1
+                  }
+                },
+                {
+                  "blockId": "24",
+                  "textBlock": {
+                    "text": "Công ty CP Thẩm định giá An Phú và các thẩm định viên về giá có trách nhiệm thực hiện đúng quy định tại Luật Giá, các văn bản hướng dẫn và các quy định pháp luật có liên quan./",
+                    "type": "paragraph"
+                  },
+                  "pageSpan": {
+                    "pageStart": 1,
+                    "pageEnd": 1
+                  }
+                },
+                {
+                  "blockId": "25",
+                  "textBlock": {
+                    "text": "Nơi nhận:",
+                    "type": "paragraph"
+                  },
+                  "pageSpan": {
+                    "pageStart": 1,
+                    "pageEnd": 1
+                  }
+                },
+                {
+                  "blockId": "26",
+                  "textBlock": {
+                    "text": "Doanh nghiệp TĐG tại Thông báo; Website Bộ Tài chính (để đăng tin); Website Cục QLG (để đăng tin); - Lưu: VT, QLG (05 bản).",
+                    "type": "paragraph"
+                  },
+                  "pageSpan": {
+                    "pageStart": 1,
+                    "pageEnd": 1
+                  }
+                },
+                {
+                  "blockId": "27",
+                  "textBlock": {
+                    "text": "TL. BỘ TRƯỞNG CỤC TRƯỞNG CỤC QUẢN LÝ GIÁ",
+                    "type": "paragraph"
+                  },
+                  "pageSpan": {
+                    "pageStart": 1,
+                    "pageEnd": 1
+                  }
+                },
+                {
+                  "blockId": "28",
+                  "textBlock": {
+                    "text": "TÀI",
+                    "type": "paragraph"
+                  },
+                  "pageSpan": {
+                    "pageStart": 1,
+                    "pageEnd": 1
+                  }
+                },
+                {
+                  "blockId": "29",
+                  "textBlock": {
+                    "text": "CH",
+                    "type": "paragraph"
+                  },
+                  "pageSpan": {
+                    "pageStart": 1,
+                    "pageEnd": 1
+                  }
+                },
+                {
+                  "blockId": "30",
+                  "textBlock": {
+                    "text": "BO",
+                    "type": "paragraph"
+                  },
+                  "pageSpan": {
+                    "pageStart": 1,
+                    "pageEnd": 1
+                  }
+                },
+                {
+                  "blockId": "31",
+                  "textBlock": {
+                    "text": "H",
+                    "type": "paragraph"
+                  },
+                  "pageSpan": {
+                    "pageStart": 1,
+                    "pageEnd": 1
+                  }
+                },
+                {
+                  "blockId": "32",
+                  "textBlock": {
+                    "text": "Nguyễn Minh Tiến",
+                    "type": "paragraph"
+                  },
+                  "pageSpan": {
+                    "pageStart": 1,
+                    "pageEnd": 1
+                  }
+                }
+              ]
+            },
+            "pageSpan": {
+              "pageStart": 1,
+              "pageEnd": 1
+            }
+          }
+        ]
+      }
+    }
+  }
+]
