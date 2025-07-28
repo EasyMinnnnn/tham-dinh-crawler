@@ -6,7 +6,6 @@ import re
 from google.cloud import documentai_v1 as documentai
 from google.oauth2 import service_account
 from google.api_core.exceptions import GoogleAPICallError
-
 from googleapiclient.discovery import build
 from google.oauth2.service_account import Credentials as SheetCredentials
 
@@ -36,7 +35,32 @@ if not project_id or not processor_id:
 client = documentai.DocumentProcessorServiceClient(credentials=credentials)
 name = f"projects/{project_id}/locations/{location}/processors/{processor_id}"
 
-def push_to_google_sheet(json_data: dict, sheet_range="Sheet1!A1"):
+def extract_text(text_anchor, text):
+    if not text_anchor.text_segments:
+        return ""
+    result = ""
+    for segment in text_anchor.text_segments:
+        start = segment.start_index if segment.start_index else 0
+        end = segment.end_index
+        result += text[start:end]
+    return result.strip()
+
+def extract_table_from_document(document):
+    result_tables = []
+    text = document.text
+    for page in document.pages:
+        for table in page.tables:
+            table_rows = []
+            for row in table.header_rows + table.body_rows:
+                row_cells = []
+                for cell in row.cells:
+                    cell_text = extract_text(cell.layout.text_anchor, text)
+                    row_cells.append(cell_text)
+                table_rows.append(row_cells)
+            result_tables.append(table_rows)
+    return result_tables
+
+def push_table_to_google_sheet(table_rows, sheet_range="Sheet1!A1"):
     try:
         sheet_json = os.environ.get("GOOGLE_CREDENTIALS_JSON")
         sheet_id = os.environ.get("GOOGLE_SHEET_ID")
@@ -49,16 +73,19 @@ def push_to_google_sheet(json_data: dict, sheet_range="Sheet1!A1"):
         service = build("sheets", "v4", credentials=creds)
         sheet = service.spreadsheets()
 
-        json_str = json.dumps(json_data, ensure_ascii=False, indent=2)
+        if not table_rows:
+            print("⚠️ Không có bảng nào được tìm thấy.")
+            return
+
         sheet.values().update(
             spreadsheetId=sheet_id,
             range=sheet_range,
             valueInputOption="RAW",
-            body={"values": [[json_str]]}
+            body={"values": table_rows}
         ).execute()
-        print("📤 Đã push nội dung OCR JSON lên Google Sheet.")
+        print("📤 Đã push bảng lên Google Sheet.")
     except Exception as e:
-        print(f"❌ Lỗi khi push lên Google Sheet: {e}")
+        print(f"❌ Lỗi khi push bảng lên Google Sheet: {e}")
 
 def fallback_from_manual_json(pdf_path, json_path):
     base_name = os.path.basename(json_path)
@@ -94,8 +121,6 @@ def fallback_from_any_document_json(pdf_path, json_path):
                             json.dump(document_data, out, ensure_ascii=False, indent=2)
                         print(f"🛠️ Fallback thành công từ {doc_file} (record {idx}) cho: {pdf_basename}")
                         return True
-                    else:
-                        print(f"⛔ Không khớp: {input_source} với {pdf_basename}")
         except Exception as e:
             print(f"❌ Lỗi đọc {doc_file}: {e}")
     print(f"⚠️ Không tìm thấy khớp trong bất kỳ document*.json nào cho: {pdf_basename}")
@@ -103,36 +128,43 @@ def fallback_from_any_document_json(pdf_path, json_path):
 
 def process_file(pdf_path):
     json_path = pdf_path.replace(".pdf", ".json")
-    print(f"\n🧠 OCR file: {pdf_path}")
+    print(f"\n📄 Đang xử lý file: {pdf_path}")
     try:
         with open(pdf_path, "rb") as f:
             pdf_bytes = f.read()
 
         raw_document = documentai.RawDocument(content=pdf_bytes, mime_type="application/pdf")
-        request = {"name": name, "raw_document": raw_document}
+        request = documentai.ProcessRequest(name=name, raw_document=raw_document)
         result = client.process_document(request=request)
         document = result.document
 
-        if not document.text.strip() and not document.pages:
+        if not document.text.strip():
             print(f"⚠️ Không có văn bản OCR được từ: {pdf_path}")
             if fallback_from_manual_json(pdf_path, json_path) or fallback_from_any_document_json(pdf_path, json_path):
                 print("📁 Đã fallback nhưng KHÔNG push lên Google Sheet vì không có kết quả OCR.")
                 return True
             return False
 
+        # Ghi lại toàn bộ kết quả Document vào file json
         document_dict = document._pb.__class__.to_dict(document._pb)
         with open(json_path, "w", encoding="utf-8") as f:
             json.dump(document_dict, f, ensure_ascii=False, indent=2)
 
         print(f"✅ Đã lưu file JSON: {json_path}")
-        push_to_google_sheet(document_dict, sheet_range="Sheet1!A1")
+
+        # Trích bảng và đẩy lên sheet
+        tables = extract_table_from_document(document)
+        if tables:
+            push_table_to_google_sheet(tables[0])  # chỉ đẩy bảng đầu tiên
+        else:
+            print("⚠️ Không có bảng nào để push.")
         os.remove(pdf_path)
         return True
 
     except GoogleAPICallError as api_error:
         print(f"❌ Lỗi từ Google API: {api_error}")
     except Exception as e:
-        print(f"❌ Lỗi khi OCR {pdf_path}: {e}")
+        print(f"❌ Lỗi khi xử lý {pdf_path}: {e}")
     return False
 
 if __name__ == "__main__":
