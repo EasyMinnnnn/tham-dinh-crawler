@@ -151,10 +151,10 @@ def process_file(pdf_path):
         with open(pdf_path, "rb") as f:
             pdf_bytes = f.read()
 
-        # Trích văn bản OCR để lấy tên công ty
+        # 🔍 Lấy tên công ty
         company_name = extract_company_name_from_ocr(pdf_bytes)
 
-        # Gọi form parser để lấy bảng
+        # 📊 Lấy bảng dữ liệu
         raw_document = documentai.RawDocument(content=pdf_bytes, mime_type="application/pdf")
         request = documentai.ProcessRequest(name=name, raw_document=raw_document)
         result = client.process_document(request=request)
