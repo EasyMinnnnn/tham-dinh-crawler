@@ -35,7 +35,7 @@ if not project_id or not processor_id or not processor_id_ocr:
     sys.exit(1)
 
 client = documentai.DocumentProcessorServiceClient(credentials=credentials)
-name = f"projects/{project_id}/locations/{location}/processors/{processor_id}"
+name_form = f"projects/{project_id}/locations/{location}/processors/{processor_id}"
 name_ocr = f"projects/{project_id}/locations/{location}/processors/{processor_id_ocr}"
 
 def extract_text(text_anchor, text):
@@ -101,84 +101,36 @@ def push_table_to_google_sheet(table_rows, sheet_range="Sheet1!A1"):
             valueInputOption="RAW",
             body={"values": table_rows}
         ).execute()
-        print("📤 Đã push bảng lên Google Sheet.")
+        print("📄 Đã push bảng lên Google Sheet.")
     except Exception as e:
         print(f"❌ Lỗi khi push bảng lên Google Sheet: {e}")
 
-def fallback_from_manual_json(pdf_path, json_path):
-    base_name = os.path.basename(json_path)
-    manual_json_path = os.path.join("preprocessed", base_name)
-    if os.path.exists(manual_json_path):
-        shutil.copy(manual_json_path, json_path)
-        print(f"🛠️ Dùng JSON thủ công từ preprocessed/: {manual_json_path}")
-        return True
-    return False
-
-def fallback_from_any_document_json(pdf_path, json_path):
-    pdf_basename = os.path.basename(pdf_path)
-    document_files = [f for f in os.listdir(".") if re.match(r"document.*\.json$", f)]
-    if not document_files:
-        print("⚠️ Không tìm thấy file document*.json nào để fallback.")
-        return False
-
-    print(f"🔎 Đang thử fallback từ các file: {document_files}")
-    for doc_file in sorted(document_files):
-        try:
-            with open(doc_file, "r", encoding="utf-8") as f:
-                data = json.load(f)
-
-            if isinstance(data, list):
-                print(f"📄 File {doc_file} chứa {len(data)} record.")
-                for idx, record in enumerate(data):
-                    input_source = record.get("inputSource", "")
-                    if not input_source:
-                        continue
-                    if pdf_basename in input_source:
-                        document_data = record.get("document", {})
-                        with open(json_path, "w", encoding="utf-8") as out:
-                            json.dump(document_data, out, ensure_ascii=False, indent=2)
-                        print(f"🛠️ Fallback thành công từ {doc_file} (record {idx}) cho: {pdf_basename}")
-                        return True
-        except Exception as e:
-            print(f"❌ Lỗi đọc {doc_file}: {e}")
-    print(f"⚠️ Không tìm thấy khớp trong bất kỳ document*.json nào cho: {pdf_basename}")
-    return False
-
 def process_file(pdf_path):
-    json_path = pdf_path.replace(".pdf", ".json")
     print(f"\n📄 Đang xử lý file: {pdf_path}")
     try:
         with open(pdf_path, "rb") as f:
             pdf_bytes = f.read()
 
-        # 🔍 Lấy tên công ty
         company_name = extract_company_name_from_ocr(pdf_bytes)
 
-        # 📊 Lấy bảng dữ liệu
         raw_document = documentai.RawDocument(content=pdf_bytes, mime_type="application/pdf")
-        request = documentai.ProcessRequest(name=name, raw_document=raw_document)
+        request = documentai.ProcessRequest(name=name_form, raw_document=raw_document)
         result = client.process_document(request=request)
         document = result.document
 
-        if not document.text.strip():
-            print(f"⚠️ Không có văn bản OCR được từ: {pdf_path}")
-            if fallback_from_manual_json(pdf_path, json_path) or fallback_from_any_document_json(pdf_path, json_path):
-                print("📁 Đã fallback nhưng KHÔNG push lên Google Sheet vì không có kết quả OCR.")
-                return True
-            return False
-
         document_dict = MessageToDict(document._pb, preserving_proto_field_name=True)
+        json_path = pdf_path.replace(".pdf", ".json")
         with open(json_path, "w", encoding="utf-8") as f:
             json.dump(document_dict, f, ensure_ascii=False, indent=2)
-
         print(f"✅ Đã lưu file JSON: {json_path}")
 
         tables = extract_table_from_document(document)
         if tables:
-            full_table = [[company_name]] + tables[0] if company_name else tables[0]
-            push_table_to_google_sheet(full_table)
+            final_table = [[company_name]] + tables[0] if company_name else tables[0]
+            push_table_to_google_sheet(final_table)
         else:
             print("⚠️ Không có bảng nào để push.")
+
         os.remove(pdf_path)
         return True
 
