@@ -8,7 +8,7 @@ from google.oauth2 import service_account
 from google.api_core.exceptions import GoogleAPICallError
 from googleapiclient.discovery import build
 from google.oauth2.service_account import Credentials as SheetCredentials
-from google.protobuf.json_format import MessageToDict  # ✅ Thêm dòng này
+from google.protobuf.json_format import MessageToDict  # ✅ convert protobuf to dict
 
 os.makedirs("preprocessed", exist_ok=True)
 
@@ -52,7 +52,8 @@ def extract_table_from_document(document):
     for page in document.pages:
         for table in page.tables:
             table_rows = []
-            for row in table.header_rows + table.body_rows:
+            # ✅ fix lỗi RepeatedComposite: convert cả hai về list
+            for row in list(table.header_rows) + list(table.body_rows):
                 row_cells = []
                 for cell in row.cells:
                     cell_text = extract_text(cell.layout.text_anchor, text)
@@ -146,7 +147,7 @@ def process_file(pdf_path):
                 return True
             return False
 
-        # ✅ Sửa lỗi to_dict
+        # ✅ Sửa lỗi to_dict → dùng MessageToDict
         document_dict = MessageToDict(document._pb, preserving_proto_field_name=True)
 
         with open(json_path, "w", encoding="utf-8") as f:
