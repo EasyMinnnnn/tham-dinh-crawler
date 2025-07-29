@@ -69,18 +69,15 @@ def extract_company_name_from_ocr(pdf_bytes):
         request = documentai.ProcessRequest(name=name_doc_ocr, raw_document=raw_document)
         result = client.process_document(request=request)
         text = result.document.text
+        print("📄 Văn bản OCR trích được:\n" + "-"*40 + f"\n{text}\n" + "-"*40)
 
-        # ✅ Ghi log debug kết quả OCR
-        print("📄 Văn bản OCR trích được:")
-        print("-" * 40)
-        print(text[:3000])  # In 3000 ký tự đầu tiên để kiểm tra
-        print("-" * 40)
-
-        # ✅ Regex khớp đoạn "Công ty.../TDG)"
-        match = re.search(r"(Công\s*ty[\s\S]{0,200}?/TDG\))", text, re.IGNORECASE)
+        # ✅ Tìm theo mẫu Công ty ... (…TĐG) hoặc (…TDG)
+        match = re.search(r"(Công\s*ty[\s\S]{0,200}?\([^\)]+T[ĐD]G\))", text, re.IGNORECASE)
         if match:
             return match.group(1).strip()
-        return ""
+        else:
+            print("⚠️ Không tìm thấy tên công ty trong văn bản OCR.")
+            return ""
     except Exception as e:
         print(f"⚠️ Lỗi OCR Document khi trích tên công ty: {e}")
         return ""
@@ -121,8 +118,6 @@ def process_file(pdf_path):
 
         # 1️⃣ OCR tên công ty trước bằng Document OCR
         company_name = extract_company_name_from_ocr(pdf_bytes)
-        if not company_name:
-            print("⚠️ Không tìm thấy tên công ty trong văn bản OCR.")
 
         # 2️⃣ Trích bảng bằng Form Parser
         raw_document = documentai.RawDocument(content=pdf_bytes, mime_type="application/pdf")
