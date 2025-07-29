@@ -71,15 +71,12 @@ def extract_fields_from_ocr(pdf_bytes):
         text = result.document.text
         print("📄 Văn bản OCR trích được:\n" + "-"*40 + f"\n{text}\n" + "-"*40)
 
-        # ✅ Trích tên công ty
         company_match = re.search(r"(Công\s*ty[\s\S]{0,200}?\([^\)]+T[ĐD]G\))", text, re.IGNORECASE)
         company_name = company_match.group(1).strip() if company_match else ""
 
-        # ✅ Trích số hiệu văn bản trước /TB-BTC
         sohieu_match = re.search(r"Số[:\s]+(\d+)(?=/TB-BTC)", text, re.IGNORECASE)
         sohieu = sohieu_match.group(1).strip() if sohieu_match else ""
 
-        # ✅ Trích thời gian ký sau "Thời gian ký:"
         time_match = re.search(r"Thời gian ký[:\s]+([^\n]+)", text)
         sign_time = time_match.group(1).strip() if time_match else ""
 
@@ -104,28 +101,16 @@ def push_data_to_google_sheet(company_name, table_rows, sohieu, sign_time):
         data = []
 
         if company_name:
-            data.append({
-                "range": "Sheet1!A1",
-                "values": [[company_name]]
-            })
+            data.append({"range": "Sheet1!A1", "values": [[company_name]]})
 
         if table_rows:
-            data.append({
-                "range": "Sheet1!C1",
-                "values": table_rows
-            })
+            data.append({"range": "Sheet1!C1", "values": table_rows})
 
         if sohieu:
-            data.append({
-                "range": "Sheet1!H2",
-                "values": [[sohieu]]
-            })
+            data.append({"range": "Sheet1!H2", "values": [[sohieu]]})
 
         if sign_time:
-            data.append({
-                "range": "Sheet1!I2",
-                "values": [[sign_time]]
-            })
+            data.append({"range": "Sheet1!I2", "values": [[sign_time]]})
 
         if not data:
             print("⚠️ Không có dữ liệu nào để ghi vào Google Sheet.")
@@ -139,17 +124,18 @@ def push_data_to_google_sheet(company_name, table_rows, sohieu, sign_time):
     except Exception as e:
         print(f"❌ Lỗi khi push dữ liệu lên Google Sheet: {e}")
 
-def process_file(pdf_path):
+def process_file(pdf_path, override_sohieu=None):
     json_path = pdf_path.replace(".pdf", ".json")
     print(f"\n📄 Đang xử lý file: {pdf_path}")
     try:
         with open(pdf_path, "rb") as f:
             pdf_bytes = f.read()
 
-        # 1️⃣ Trích thông tin bằng Document OCR
         company_name, sohieu, sign_time = extract_fields_from_ocr(pdf_bytes)
 
-        # 2️⃣ Trích bảng bằng Form Parser
+        if override_sohieu:
+            sohieu = override_sohieu
+
         raw_document = documentai.RawDocument(content=pdf_bytes, mime_type="application/pdf")
         request = documentai.ProcessRequest(name=name_form_parser, raw_document=raw_document)
         result = client.process_document(request=request)
@@ -182,9 +168,10 @@ if __name__ == "__main__":
     input_dir = "outputs"
     os.makedirs(input_dir, exist_ok=True)
     files = [f for f in os.listdir(input_dir) if f.endswith(".pdf")]
+    override_sohieu = sys.argv[2] if len(sys.argv) > 2 else None
     success = 0
     for f in files:
         path = os.path.join(input_dir, f)
-        if process_file(path):
+        if process_file(path, override_sohieu):
             success += 1
     print(f"\n📊 Tổng số file đã xử lý thành công: {success}")
