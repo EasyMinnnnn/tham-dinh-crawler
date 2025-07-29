@@ -70,8 +70,14 @@ def extract_company_name_from_ocr(pdf_bytes):
         result = client.process_document(request=request)
         text = result.document.text
 
-        # ✅ Regex: bắt đầu bằng "Công ty", kết thúc bằng "/TDG)"
-        match = re.search(r"(Công ty[\s\S]{0,200}?/TDG\))", text)
+        # ✅ Ghi log debug kết quả OCR
+        print("📄 Văn bản OCR trích được:")
+        print("-" * 40)
+        print(text[:3000])  # In 3000 ký tự đầu tiên để kiểm tra
+        print("-" * 40)
+
+        # ✅ Regex khớp đoạn "Công ty.../TDG)"
+        match = re.search(r"(Công\s*ty[\s\S]{0,200}?/TDG\))", text, re.IGNORECASE)
         if match:
             return match.group(1).strip()
         return ""
