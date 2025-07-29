@@ -8,7 +8,6 @@ from playwright.async_api import async_playwright
 async def main():
     base_url = "https://mof.gov.vn/bo-tai-chinh/danh-sach-tham-dinh-ve-gia"
     domain = "https://mof.gov.vn"
-    document_number = None  # Số hiệu văn bản để điền vào ô H2
 
     async with async_playwright() as p:
         browser = await p.chromium.launch(headless=True)
@@ -16,41 +15,46 @@ async def main():
         await page.goto(base_url, timeout=30000)
         print("🌐 Đã vào trang danh sách.")
 
-        await page.wait_for_timeout(5000)
+        # Cuộn để tải động
+        await page.mouse.wheel(0, 3000)
+        await page.wait_for_timeout(3000)
+
+        # Debug HTML nếu cần
         html = await page.content()
         with open("mof_debug.html", "w", encoding="utf-8") as f:
             f.write(html)
 
-        link_elements = await page.query_selector_all("a")
+        # Trích toàn bộ <a> từ danh sách
+        link_elements = await page.locator("a").all()
         print(f"🔎 Tổng số thẻ <a>: {len(link_elements)}")
 
         valid_links = []
         for link in link_elements:
             href = await link.get_attribute("href")
-            text = await link.inner_text()
-            if href:
-                print(f"↪️ {text.strip()} --> {href.strip()}")
-            if href and href.startswith("/bo-tai-chinh/danh-sach-tham-dinh-ve-gia/"):
-                href = href.strip()
-                # 📌 Trích số hiệu văn bản từ nội dung text
-                if not document_number:
-                    match = re.search(r"(\d{3,4}/[A-Z]{2}-BTC)", text)
-                    if match:
-                        document_number = match.group(1)
-                        print("📎 Số hiệu văn bản:", document_number)
-                valid_links.append(href)
+            text = (await link.inner_text()).strip()
+
+            if href and "/bo-tai-chinh/danh-sach-tham-dinh-ve-gia/" in href:
+                print(f"↪️ {text} --> {href}")
+                valid_links.append((text, href.strip()))
 
         if not valid_links:
             print("❌ Không tìm thấy bài viết hợp lệ.")
             await browser.close()
             return
 
-        relative_path = valid_links[0]
+        # Lấy bài đầu tiên
+        title, relative_path = valid_links[0]
         detail_url = domain + relative_path
         print("🔗 Link chi tiết:", detail_url)
 
+        # Trích số hiệu văn bản từ tiêu đề
+        match = re.search(r"\b\d{3,4}/TB-BTC\b", title)
+        so_van_ban = match.group(0) if match else ""
+        print("📎 Số hiệu văn bản:", so_van_ban)
+
         await browser.close()
 
+    # Tải file PDF
     print("📅 Đang tải PDF...")
     subprocess.run(["python", "download_pdf.py", detail_url], check=True)
 
@@ -63,13 +67,10 @@ async def main():
     latest_pdf = max(pdf_files, key=os.path.getmtime)
     print("📄 PDF mới nhất:", latest_pdf)
 
+    # Gửi sang OCR
     print("🧐 Đang OCR và extract bảng...")
     try:
-        # Gửi thêm document_number như biến môi trường để ghi vào Google Sheet
-        env = os.environ.copy()
-        if document_number:
-            env["DOCUMENT_NUMBER"] = document_number
-        subprocess.run(["python", "ocr_to_json.py", str(latest_pdf)], check=True, env=env)
+        subprocess.run(["python", "ocr_to_json.py", str(latest_pdf), so_van_ban], check=True)
     except subprocess.CalledProcessError as e:
         print(f"❌ Lỗi khi chạy OCR: {e}")
         return
