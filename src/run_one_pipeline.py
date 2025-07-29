@@ -53,16 +53,7 @@ async def main():
         await browser.close()
 
     print("📅 Đang tải PDF...")
-    subprocess.run(["python", "download_pdf.py", detail_url], check=True)
-
-    output_dir = Path("outputs")
-    pdf_files = list(output_dir.glob("*.pdf"))
-    if not pdf_files:
-        print("❌ Không tìm thấy file PDF sau khi tải.")
-        return
-
-    latest_pdf = max(pdf_files, key=os.path.getmtime)
-    print("📄 PDF mới nhất:", latest_pdf)
+@@ -57,12 +64,14 @@
 
     print("🧐 Đang OCR và extract bảng...")
     try:
