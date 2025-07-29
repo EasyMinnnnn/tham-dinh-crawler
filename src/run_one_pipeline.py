@@ -1,13 +1,14 @@
 import asyncio
 import os
-import subprocess
 import re
+import subprocess
 from pathlib import Path
 from playwright.async_api import async_playwright
 
 async def main():
     base_url = "https://mof.gov.vn/bo-tai-chinh/danh-sach-tham-dinh-ve-gia"
     domain = "https://mof.gov.vn"
+    document_number = ""  # Số văn bản: 586/TB-BTC
 
     async with async_playwright() as p:
         browser = await p.chromium.launch(headless=True)
@@ -31,22 +32,24 @@ async def main():
                 print(f"↪️ {text.strip()} --> {href.strip()}")
             if href and href.startswith("/bo-tai-chinh/danh-sach-tham-dinh-ve-gia/"):
                 href = href.strip()
-                text = text.strip()
-                valid_links.append((href, text))
+                valid_links.append((text.strip(), href))
 
         if not valid_links:
             print("❌ Không tìm thấy bài viết hợp lệ.")
             await browser.close()
             return
 
-        relative_path, title_text = valid_links[0]
+        first_title, relative_path = valid_links[0]
         detail_url = domain + relative_path
         print("🔗 Link chi tiết:", detail_url)
 
-        # Trích số hiệu văn bản, ví dụ: 586/TB-BTC
-        match = re.search(r"(\d{2,5}/TB-BTC)", title_text, re.IGNORECASE)
-        doc_number = match.group(1) if match else ""
-        print("📎 Số hiệu văn bản:", doc_number)
+        # 👉 Trích số văn bản từ tiêu đề đầu tiên
+        match = re.search(r"\b(\d{3,4}/TB-BTC)\b", first_title)
+        if match:
+            document_number = match.group(1)
+            print("📎 Số hiệu văn bản:", document_number)
+        else:
+            print("⚠️ Không tìm thấy số hiệu văn bản trong tiêu đề.")
 
         await browser.close()
 
@@ -64,8 +67,11 @@ async def main():
 
     print("🧐 Đang OCR và extract bảng...")
     try:
+        # 👉 Truyền DOCUMENT_NUMBER vào biến môi trường
         env = os.environ.copy()
-        env["DOCUMENT_NUMBER"] = doc_number  # 👈 Truyền biến môi trường vào OCR script
+        if document_number:
+            env["DOCUMENT_NUMBER"] = document_number
+
         subprocess.run(["python", "ocr_to_json.py", str(latest_pdf)], check=True, env=env)
     except subprocess.CalledProcessError as e:
         print(f"❌ Lỗi khi chạy OCR: {e}")
