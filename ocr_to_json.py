@@ -70,14 +70,10 @@ def extract_company_name_from_ocr(pdf_bytes):
         result = client.process_document(request=request)
         text = result.document.text
 
-        pattern = r"(Công ty.*?/TDG\))"
-        match = re.search(pattern, text)
+        # ✅ Regex: bắt đầu bằng "Công ty", kết thúc bằng "/TDG)"
+        match = re.search(r"(Công ty[\s\S]{0,200}?/TDG\))", text)
         if match:
-            company_name = match.group(1).strip()
-            print(f"🏢 Tìm thấy tên công ty: {company_name}")
-            return company_name
-
-        print("⚠️ Không tìm thấy tên công ty trong văn bản OCR.")
+            return match.group(1).strip()
         return ""
     except Exception as e:
         print(f"⚠️ Lỗi OCR Document khi trích tên công ty: {e}")
@@ -106,7 +102,7 @@ def push_table_to_google_sheet(table_rows, sheet_range="Sheet1!A1"):
             valueInputOption="RAW",
             body={"values": table_rows}
         ).execute()
-        print("📄 Đã push bảng lên Google Sheet.")
+        print("📤 Đã push bảng lên Google Sheet.")
     except Exception as e:
         print(f"❌ Lỗi khi push bảng lên Google Sheet: {e}")
 
@@ -117,10 +113,12 @@ def process_file(pdf_path):
         with open(pdf_path, "rb") as f:
             pdf_bytes = f.read()
 
-        # 1⃣ OCR tên công ty trước bằng Document OCR
+        # 1️⃣ OCR tên công ty trước bằng Document OCR
         company_name = extract_company_name_from_ocr(pdf_bytes)
+        if not company_name:
+            print("⚠️ Không tìm thấy tên công ty trong văn bản OCR.")
 
-        # 2⃣ Trích bảng bằng Form Parser
+        # 2️⃣ Trích bảng bằng Form Parser
         raw_document = documentai.RawDocument(content=pdf_bytes, mime_type="application/pdf")
         request = documentai.ProcessRequest(name=name_form_parser, raw_document=raw_document)
         result = client.process_document(request=request)
