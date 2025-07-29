@@ -75,8 +75,8 @@ def extract_fields_from_ocr(pdf_bytes):
         company_match = re.search(r"(Công\s*ty[\s\S]{0,200}?\([^\)]+T[ĐD]G\))", text, re.IGNORECASE)
         company_name = company_match.group(1).strip() if company_match else ""
 
-        # ✅ Trích số hiệu văn bản trước /TB-BTC
-        sohieu_match = re.search(r"Số[:\s]+(\d+)(?=/TB-BTC)", text, re.IGNORECASE)
+        # ✅ Trích số hiệu văn bản có dạng 123/TB-BTC
+        sohieu_match = re.search(r"(\d{2,5}/TB-BTC)", text, re.IGNORECASE)
         sohieu = sohieu_match.group(1).strip() if sohieu_match else ""
 
         # ✅ Trích thời gian ký sau "Thời gian ký:"
