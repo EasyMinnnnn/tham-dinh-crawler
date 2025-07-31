@@ -1,0 +1,37 @@
+name: 🧪 Test batch crawl + process
+
+on:
+  workflow_dispatch:
+
+jobs:
+  batch-run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: 🧾 Checkout code
+        uses: actions/checkout@v3
+
+      - name: 📦 Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
+
+      - name: 📥 Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          playwright install chromium
+
+      - name: 🌐 Step 1 - Crawl links and classify
+        run: python src/crawl_links_and_classify.py
+
+      - name: ⚙️ Step 2 - Process batch (only 'điều chỉnh')
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS_JSON: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS_JSON }}
+          GOOGLE_CREDENTIALS_JSON: ${{ secrets.GOOGLE_CREDENTIALS_JSON }}
+          GOOGLE_SHEET_ID: ${{ secrets.GOOGLE_SHEET_ID }}
+          GOOGLE_PROJECT_ID: ${{ secrets.GOOGLE_PROJECT_ID }}
+          GOOGLE_PROCESSOR_ID: ${{ secrets.GOOGLE_PROCESSOR_ID }}
+          GOOGLE_PROCESSOR_ID_OCR: ${{ secrets.GOOGLE_PROCESSOR_ID_OCR }}
+        run: python src/process_batch_links.py
