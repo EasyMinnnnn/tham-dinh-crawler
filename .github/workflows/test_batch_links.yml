@@ -29,6 +29,29 @@ jobs:
           GOOGLE_SHEET_ID: ${{ secrets.GOOGLE_SHEET_ID }}
         run: python src/crawl_links_and_classify.py
 
+      - name: 📂 Debug sheet 'Tonghop' sau crawl
+        env:
+          GOOGLE_CREDENTIALS_JSON: ${{ secrets.GOOGLE_CREDENTIALS_JSON }}
+          GOOGLE_SHEET_ID: ${{ secrets.GOOGLE_SHEET_ID }}
+        run: |
+          echo "📄 Đọc sheet 'Tonghop' sau khi crawl:"
+          python -c "
+import os, json
+from google.oauth2.service_account import Credentials
+from googleapiclient.discovery import build
+
+creds_dict = json.loads(os.environ['GOOGLE_CREDENTIALS_JSON'])
+creds = Credentials.from_service_account_info(creds_dict)
+sheet = build('sheets', 'v4', credentials=creds).spreadsheets()
+res = sheet.values().get(spreadsheetId=os.environ['GOOGLE_SHEET_ID'], range='Tonghop!A2:C20').execute()
+values = res.get('values', [])
+if values:
+  for row in values:
+    print(' - '.join(row))
+else:
+  print('⚠️ Không có dữ liệu trong sheet.')
+"
+
       - name: ⚙️ Step 2 - Process batch (only 'điều chỉnh')
         env:
           GOOGLE_APPLICATION_CREDENTIALS_JSON: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS_JSON }}
