@@ -37,25 +37,28 @@ def classify_title(title):
 
 def crawl_links_and_classify():
     with sync_playwright() as p:
-        browser = p.chromium.launch()
+        browser = p.chromium.launch(headless=True)
         page = browser.new_page()
         print(f"🌐 Đang mở trang: {FULL_URL}")
         page.goto(FULL_URL, timeout=60000)
-        page.wait_for_timeout(3000)
+        page.wait_for_timeout(5000)  # Cho JS load
 
-        elements = page.query_selector_all(".list-item a")
+        elements = page.query_selector_all("a")
         print(f"🔗 Tổng số thẻ <a>: {len(elements)}")
 
         data = []
 
         for el in elements:
             href = el.get_attribute("href")
+            if not href or not href.startswith("/bo-tai-chinh/danh-sach-tham-dinh-ve-gia/"):
+                continue
+
             title = el.inner_text().strip()
-            if href and "/portal" not in href:
-                full_link = BASE_URL + href if href.startswith("/") else href
-                category = classify_title(title)
-                if category != "Khác":
-                    data.append([title, full_link, category])
+            full_link = BASE_URL + href
+            category = classify_title(title)
+
+            if category != "Khác":
+                data.append([title, full_link, category])
 
         browser.close()
 
@@ -63,7 +66,7 @@ def crawl_links_and_classify():
             print("⚠️ Không tìm thấy link nào để ghi vào sheet.")
             return
 
-        print(f"🔗 Tổng số link hợp lệ: {len(data)}")
+        print(f"✅ Tổng số link hợp lệ: {len(data)}")
 
         # Ghi dữ liệu vào sheet 'Tonghop' từ ô A2
         sheet.values().update(
