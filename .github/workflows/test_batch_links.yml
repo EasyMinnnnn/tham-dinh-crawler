@@ -24,6 +24,9 @@ jobs:
           playwright install chromium
 
       - name: 🌐 Step 1 - Crawl links and classify
+        env:
+          GOOGLE_CREDENTIALS_JSON: ${{ secrets.GOOGLE_CREDENTIALS_JSON }}
+          GOOGLE_SHEET_ID: ${{ secrets.GOOGLE_SHEET_ID }}
         run: python src/crawl_links_and_classify.py
 
       - name: ⚙️ Step 2 - Process batch (only 'điều chỉnh')
