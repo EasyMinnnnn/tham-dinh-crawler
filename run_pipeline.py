@@ -13,22 +13,25 @@ ROOT = Path(__file__).resolve().parent
 DB_PATH = ROOT / "data.db"
 OUTPUT_DIR = ROOT / "outputs"
 
-# Đường dẫn script
-CRAWLER    = ROOT / "src" / "crawl_links_and_classify.py"  # trong src
-DOWNLOADER = ROOT / "download_pdf.py"                       # ở root
-EXTRACTOR  = ROOT / "src" / "extract_to_db.py"              # trong src
+DOWNLOADER = ROOT / "download_pdf.py"  # script ở root
 
-def run_cmd(script: Path | str, args: list[str] | None = None, env=None, title: str = ""):
-    """Chạy 1 script Python với cùng interpreter, CWD=repo root; in log đầy đủ."""
+def run_cmd(args: list[str], env=None, title: str = ""):
+    """Chạy lệnh bằng interpreter hiện tại, CWD=repo root, in log đầy đủ."""
     if title:
         print(title)
-    cmd = [sys.executable, str(script)]
-    if args:
-        cmd.extend(args)
+    # đảm bảo Python nhìn thấy package 'src'
+    env2 = os.environ.copy()
+    if env:
+        env2.update(env)
+    env2["PYTHONPATH"] = (
+        f"{ROOT}:{env2.get('PYTHONPATH','')}"
+        if sys.platform != "win32"
+        else f"{ROOT};{env2.get('PYTHONPATH','')}"
+    )
     proc = subprocess.run(
-        cmd,
+        [sys.executable] + args,
         cwd=str(ROOT),
-        env=env or os.environ.copy(),
+        env=env2,
         text=True,
         capture_output=True,
     )
@@ -37,7 +40,7 @@ def run_cmd(script: Path | str, args: list[str] | None = None, env=None, title: 
     if proc.returncode != 0:
         if proc.stderr:
             print(proc.stderr)
-        raise subprocess.CalledProcessError(proc.returncode, cmd)
+        raise subprocess.CalledProcessError(proc.returncode, args)
     return proc
 
 def fetch_personal_links(year: int, limit: int) -> List[Tuple[str, str]]:
@@ -63,7 +66,7 @@ def fetch_personal_links(year: int, limit: int) -> List[Tuple[str, str]]:
 
 # 1) Crawl -> ghi SQLite
 try:
-    run_cmd(CRAWLER, title="🚀 Đang crawl link mới bằng Playwright (ghi vào SQLite)…")
+    run_cmd(["-m", "src.crawl_links_and_classify"], title="🚀 Đang crawl link mới bằng Playwright (ghi vào SQLite)…")
 except subprocess.CalledProcessError:
     print("⚠️ Crawler lỗi, tiếp tục pipeline…")
 
@@ -76,17 +79,16 @@ os.makedirs(OUTPUT_DIR, exist_ok=True)
 for idx, (title, url) in enumerate(links, 1):
     print(f"\n🟡 [{idx}] {title}")
     try:
-        # Tải PDF
-        run_cmd(DOWNLOADER, [url], title="⬇️  Đang tải PDF…")
+        # tải PDF
+        run_cmd([str(DOWNLOADER), url], title="⬇️  Đang tải PDF…")
 
-        # Truyền nguồn cho extractor để ghi vào DB
-        env = os.environ.copy()
-        env["CURRENT_SOURCE_URL"] = url
+        # truyền nguồn cho extractor
+        env = {"CURRENT_SOURCE_URL": url}
 
-        # OCR + parse + ghi DB (Google Document AI được dùng trong extract_to_db.py)
-        run_cmd(EXTRACTOR, env=env, title="🧠  OCR & parse & ghi DB…")
+        # OCR + parse + ghi DB (Document AI dùng trong extract_to_db.py)
+        run_cmd(["-m", "src.extract_to_db"], env=env, title="🧠  OCR & parse & ghi DB…")
 
-        # Dọn file PDF còn sót (extractor đã xóa khi thành công)
+        # dọn file PDF còn sót (extractor đã tự xóa khi thành công)
         for f in OUTPUT_DIR.glob("*.pdf"):
             try:
                 f.unlink(missing_ok=True)
