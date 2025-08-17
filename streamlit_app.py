@@ -1,5 +1,6 @@
 # streamlit_app.py
 import os, sys, json, sqlite3, pathlib, subprocess
+from pathlib import Path
 import pandas as pd
 import streamlit as st
 
@@ -9,7 +10,9 @@ from src.db import init_schema, DB_PATH, get_conn
 st.set_page_config(page_title="Thẩm định crawler", layout="wide")
 st.title("Theo dõi thẩm định viên & doanh nghiệp (không dùng Google Sheet)")
 
-# ---- Đồng bộ secrets -> env để subprocess (crawler/OCR) cũng đọc được ----
+ROOT = Path(__file__).resolve().parent
+
+# ---- Đồng bộ secrets -> env (cho subprocess cũng dùng được) ----
 def sync_secrets_to_env():
     keys = [
         "GOOGLE_PROJECT_ID", "GOOGLE_PROCESSOR_ID", "GOOGLE_PROCESSOR_ID_OCR",
@@ -20,10 +23,12 @@ def sync_secrets_to_env():
             os.environ[k] = str(st.secrets[k])
     if "GOOGLE_APPLICATION_CREDENTIALS_JSON" in st.secrets:
         val = st.secrets["GOOGLE_APPLICATION_CREDENTIALS_JSON"]
-        # secrets có thể là dict hoặc string
         os.environ["GOOGLE_APPLICATION_CREDENTIALS_JSON"] = (
             json.dumps(val) if isinstance(val, dict) else str(val)
         )
+    os.environ.setdefault("CRAWL_YEAR", "2025")
+    os.environ.setdefault("PIPELINE_LIMIT", "5")
+    os.environ.setdefault("PLAYWRIGHT_HEADLESS", "1")
 
 sync_secrets_to_env()
 
@@ -53,8 +58,14 @@ def load_df(sql: str):
         return pd.DataFrame()
 
 def run_script(args, env=None, title="Đang chạy..."):
+    # đảm bảo Python nhìn thấy package 'src' & chạy tại repo root
+    env2 = os.environ.copy()
+    if env:
+        env2.update(env)
+    sep = ";" if os.name == "nt" else ":"
+    env2["PYTHONPATH"] = f"{ROOT}{sep}{env2.get('PYTHONPATH','')}"
     with st.spinner(title):
-        proc = subprocess.run(args, capture_output=True, text=True, env=env or os.environ.copy())
+        proc = subprocess.run(args, capture_output=True, text=True, env=env2, cwd=str(ROOT))
     if proc.stdout:
         with st.expander("Log (stdout)", expanded=False):
             st.code(proc.stdout)
@@ -70,18 +81,16 @@ colA, colB, colC = st.columns([1,1,1])
 
 with colA:
     if st.button("Crawl link năm 2025"):
-        os.environ.setdefault("CRAWL_YEAR", "2025")
-        run_script([sys.executable, "src/crawl_links_and_classify.py"], title="Crawling…")
+        run_script([sys.executable, "-m", "src.crawl_links_and_classify"], title="Crawling…")
 
 with colB:
     if st.button("Cập nhật dữ liệu cá nhân (OCR)"):
-        # run_pipeline.py: crawler -> lấy link personal -> download -> extract_to_db
+        # run_pipeline.py sẽ tự gọi crawler -> download -> extract_to_db
         run_script([sys.executable, "run_pipeline.py"], title="OCR & cập nhật DB…")
 
 with colC:
     if st.button("Kiểm tra link mới (hằng ngày)"):
-        os.environ.setdefault("CRAWL_YEAR", "2025")
-        run_script([sys.executable, "src/crawl_links_and_classify.py"], title="Kiểm tra link mới…")
+        run_script([sys.executable, "-m", "src.crawl_links_and_classify"], title="Kiểm tra link mới…")
 
 st.markdown("---")
 
