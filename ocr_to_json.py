@@ -1,18 +1,23 @@
 import os
 import sys
 import json
-import shutil
 import re
+from typing import List, Dict, Any, Tuple, Optional
+
 from google.cloud import documentai_v1 as documentai
 from google.oauth2 import service_account
 from google.api_core.exceptions import GoogleAPICallError
-from googleapiclient.discovery import build
-from google.oauth2.service_account import Credentials as SheetCredentials
 from google.protobuf.json_format import MessageToDict
 
-os.makedirs("preprocessed", exist_ok=True)
+# Thư mục I/O
+INPUT_DIR = "outputs"
+RAW_JSON_DIR = "preprocessed"     # dump JSON gốc từ Document AI (debug)
+OUT_JSON_DIR = "outputs_json"     # JSON chuẩn hoá để các bước sau dùng
 
-# 🔐 Load credentials
+os.makedirs(RAW_JSON_DIR, exist_ok=True)
+os.makedirs(OUT_JSON_DIR, exist_ok=True)
+
+# ---------- Load Document AI credentials ----------
 credentials_json = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS_JSON")
 if not credentials_json:
     print("❌ Thiếu biến GOOGLE_APPLICATION_CREDENTIALS_JSON.")
@@ -25,151 +30,151 @@ except Exception as e:
     print(f"❌ GOOGLE_APPLICATION_CREDENTIALS_JSON không hợp lệ: {e}")
     sys.exit(1)
 
-project_id = os.environ.get("GOOGLE_PROJECT_ID")
-processor_id = os.environ.get("GOOGLE_PROCESSOR_ID")  # Form Parser
-processor_id_ocr = os.environ.get("GOOGLE_PROCESSOR_ID_OCR")  # Document OCR
-location = os.environ.get("GOOGLE_LOCATION", "us")
+project_id      = os.environ.get("GOOGLE_PROJECT_ID")
+processor_id    = os.environ.get("GOOGLE_PROCESSOR_ID")         # Form Parser
+processor_id_ocr= os.environ.get("GOOGLE_PROCESSOR_ID_OCR")     # Document OCR
+location        = os.environ.get("GOOGLE_LOCATION", "us")
 
 if not project_id or not processor_id or not processor_id_ocr:
     print("❌ Thiếu GOOGLE_PROJECT_ID hoặc PROCESSOR_ID hoặc PROCESSOR_ID_OCR.")
     sys.exit(1)
 
 client = documentai.DocumentProcessorServiceClient(credentials=credentials)
-name_form_parser = f"projects/{project_id}/locations/{location}/processors/{processor_id}"
-name_doc_ocr = f"projects/{project_id}/locations/{location}/processors/{processor_id_ocr}"
+NAME_FORM  = f"projects/{project_id}/locations/{location}/processors/{processor_id}"
+NAME_OCR   = f"projects/{project_id}/locations/{location}/processors/{processor_id_ocr}"
 
-def extract_text(text_anchor, text):
-    if not text_anchor.text_segments:
+# ---------- Utils ----------
+def _safe(s: Optional[str]) -> str:
+    return (s or "").strip()
+
+def _lower(s: Optional[str]) -> str:
+    return (s or "").strip().lower()
+
+def extract_text(text_anchor, full_text: str) -> str:
+    if not text_anchor or not text_anchor.text_segments:
         return ""
-    result = ""
-    for segment in text_anchor.text_segments:
-        start = segment.start_index if segment.start_index else 0
-        end = segment.end_index
-        result += text[start:end]
-    return result.strip()
+    result = []
+    for seg in text_anchor.text_segments:
+        start = seg.start_index if seg.start_index else 0
+        end = seg.end_index
+        result.append(full_text[start:end])
+    return "".join(result).strip()
 
-def extract_table_from_document(document):
-    result_tables = []
-    text = document.text
+def extract_tables(document: documentai.Document) -> List[List[List[str]]]:
+    """Trả về list các bảng; mỗi bảng là list row; row là list cell text."""
+    out: List[List[List[str]]] = []
+    full_text = document.text
     for page in document.pages:
         for table in page.tables:
-            table_rows = []
+            rows: List[List[str]] = []
             for row in list(table.header_rows) + list(table.body_rows):
-                row_cells = []
+                cells = []
                 for cell in row.cells:
-                    cell_text = extract_text(cell.layout.text_anchor, text)
-                    row_cells.append(cell_text)
-                table_rows.append(row_cells)
-            result_tables.append(table_rows)
-    return result_tables
+                    cells.append(extract_text(cell.layout.text_anchor, full_text))
+                rows.append(cells)
+            out.append(rows)
+    return out
 
-def extract_fields_from_ocr(pdf_bytes):
+# ---------- OCR free-text để lấy meta ----------
+def extract_meta_from_ocr(pdf_bytes: bytes) -> Tuple[str, str, str]:
+    """
+    Return (company_name, doc_no, signed_at)
+    - company_name: "Công ty ... (xxTĐG)" hoặc tương tự
+    - doc_no:       "123/TB-BTC" (cho phép có khoảng trắng 2 bên dấu '/')
+    - signed_at:    dòng sau 'Thời gian ký:' hoặc 'Ngày ký:'
+    """
     try:
-        raw_document = documentai.RawDocument(content=pdf_bytes, mime_type="application/pdf")
-        request = documentai.ProcessRequest(name=name_doc_ocr, raw_document=raw_document)
-        result = client.process_document(request=request)
-        text = result.document.text
-        print("📄 Văn bản OCR trích được:\n" + "-"*40 + f"\n{text}\n" + "-"*40)
+        raw = documentai.RawDocument(content=pdf_bytes, mime_type="application/pdf")
+        req = documentai.ProcessRequest(name=NAME_OCR, raw_document=raw)
+        result = client.process_document(request=req)
+        text = result.document.text or ""
 
-        # ✅ Trích tên công ty
-        company_match = re.search(r"(Công\s*ty[\s\S]{0,200}?\([^\)]+T[ĐD]G\))", text, re.IGNORECASE)
-        company_name = company_match.group(1).strip() if company_match else ""
+        # Công ty ... (…TĐG/TDG)
+        company = ""
+        m_comp = re.search(r"(Công\s*ty[\s\S]{0,200}?\([^)]+T[ĐD]G\))", text, re.IGNORECASE)
+        if m_comp:
+            company = m_comp.group(1).strip()
 
-        # ✅ Trích số hiệu văn bản có dạng 123/TB-BTC
-        sohieu_match = re.search(r"(\d{2,5}/TB-BTC)", text, re.IGNORECASE)
-        sohieu = sohieu_match.group(1).strip() if sohieu_match else ""
+        # Số hiệu 123/TB-BTC (cho phép có khoảng trắng quanh '/')
+        doc_no = ""
+        m_doc = re.search(r"(\d{2,5}\s*/\s*TB-BTC)", text, re.IGNORECASE)
+        if m_doc:
+            doc_no = m_doc.group(1).replace(" ", "")
 
-        # ✅ Trích thời gian ký sau "Thời gian ký:"
-        time_match = re.search(r"Thời gian ký[:\s]+([^\n]+)", text)
-        sign_time = time_match.group(1).strip() if time_match else ""
+        # “Thời gian ký:” hoặc “Ngày ký:”
+        signed_at = ""
+        m_time = re.search(r"(Thời\s*gian\s*ký|Ngày\s*ký)[:\s]+([^\n]+)", text, re.IGNORECASE)
+        if m_time:
+            signed_at = m_time.group(2).strip()
 
-        return company_name, sohieu, sign_time
+        return company, doc_no, signed_at
     except Exception as e:
-        print(f"⚠️ Lỗi OCR Document: {e}")
+        print(f"⚠️ Lỗi OCR meta: {e}")
         return "", "", ""
 
-def push_data_to_google_sheet(company_name, table_rows, sohieu, sign_time):
-    try:
-        sheet_json = os.environ.get("GOOGLE_CREDENTIALS_JSON")
-        sheet_id = os.environ.get("GOOGLE_SHEET_ID")
-        if not sheet_json or not sheet_id:
-            print("⚠️ Thiếu GOOGLE_CREDENTIALS_JSON hoặc GOOGLE_SHEET_ID.")
-            return
+# ---------- Form Parser ----------
+def form_parse(pdf_bytes: bytes) -> documentai.Document:
+    raw = documentai.RawDocument(content=pdf_bytes, mime_type="application/pdf")
+    req = documentai.ProcessRequest(name=NAME_FORM, raw_document=raw)
+    return client.process_document(request=req).document
 
-        creds_dict = json.loads(sheet_json)
-        creds = SheetCredentials.from_service_account_info(creds_dict)
-        service = build("sheets", "v4", credentials=creds)
-        sheet = service.spreadsheets()
+# ---------- Ghi JSON chuẩn ----------
+def write_normalized_json(out_path: str, payload: Dict[str, Any]) -> None:
+    with open(out_path, "w", encoding="utf-8") as f:
+        json.dump(payload, f, ensure_ascii=False, indent=2)
 
-        data = []
-
-        if company_name:
-            data.append({
-                "range": "Sheet1!A1",
-                "values": [[company_name]]
-            })
-
-        if table_rows:
-            data.append({
-                "range": "Sheet1!C1",
-                "values": table_rows
-            })
-
-        if sohieu:
-            data.append({
-                "range": "Sheet1!H2",
-                "values": [[sohieu]]
-            })
-
-        if sign_time:
-            data.append({
-                "range": "Sheet1!I2",
-                "values": [[sign_time]]
-            })
-
-        if not data:
-            print("⚠️ Không có dữ liệu nào để ghi vào Google Sheet.")
-            return
-
-        sheet.values().batchUpdate(
-            spreadsheetId=sheet_id,
-            body={"valueInputOption": "RAW", "data": data}
-        ).execute()
-        print("📤 Đã ghi toàn bộ dữ liệu vào Google Sheet.")
-    except Exception as e:
-        print(f"❌ Lỗi khi push dữ liệu lên Google Sheet: {e}")
-
-def process_file(pdf_path):
-    json_path = pdf_path.replace(".pdf", ".json")
+# ---------- Pipeline 1 file ----------
+def process_file(pdf_path: str) -> bool:
     print(f"\n📄 Đang xử lý file: {pdf_path}")
+    base = os.path.splitext(os.path.basename(pdf_path))[0]
+    raw_json_path = os.path.join(RAW_JSON_DIR, base + ".documentai.json")
+    out_json_path = os.path.join(OUT_JSON_DIR, base + ".json")
+
+    # Có thể set từ caller để lưu nguồn link
+    source_url = os.environ.get("CURRENT_SOURCE_URL", "")
+
     try:
         with open(pdf_path, "rb") as f:
             pdf_bytes = f.read()
 
-        # 1️⃣ Trích thông tin bằng Document OCR
-        company_name, sohieu, sign_time = extract_fields_from_ocr(pdf_bytes)
+        # 1) Lấy meta tự do từ OCR
+        company_name, doc_no, signed_at = extract_meta_from_ocr(pdf_bytes)
 
-        # 2️⃣ Trích bảng bằng Form Parser
-        raw_document = documentai.RawDocument(content=pdf_bytes, mime_type="application/pdf")
-        request = documentai.ProcessRequest(name=name_form_parser, raw_document=raw_document)
-        result = client.process_document(request=request)
-        document = result.document
-
-        if not document.text.strip():
-            print(f"⚠️ Không có văn bản OCR được từ: {pdf_path}")
+        # 2) Form Parser để lấy bảng
+        document = form_parse(pdf_bytes)
+        if not (document.text or "").strip():
+            print("⚠️ Document AI không trả về văn bản.")
             return False
 
-        document_dict = MessageToDict(document._pb, preserving_proto_field_name=True)
-        with open(json_path, "w", encoding="utf-8") as f:
-            json.dump(document_dict, f, ensure_ascii=False, indent=2)
-        print(f"✅ Đã lưu file JSON: {json_path}")
+        # Dump JSON gốc để debug (không bắt buộc)
+        try:
+            doc_dict = MessageToDict(document._pb, preserving_proto_field_name=True)
+            with open(raw_json_path, "w", encoding="utf-8") as f:
+                json.dump(doc_dict, f, ensure_ascii=False, indent=2)
+            print(f"📝 Đã lưu JSON gốc: {raw_json_path}")
+        except Exception:
+            pass
 
-        tables = extract_table_from_document(document)
-        table_rows = tables[0] if tables else []
+        tables = extract_tables(document)
 
-        push_data_to_google_sheet(company_name, table_rows, sohieu, sign_time)
+        # 3) JSON chuẩn hoá cho bước sau (ghi DB/hiển thị)
+        normalized = {
+            "pdf_name": os.path.basename(pdf_path),
+            "source_url": source_url,
+            "company_name": company_name,
+            "doc_no": doc_no,
+            "signed_at": signed_at,
+            "tables": tables,  # list[table] -> table: list[row] -> row: list[cells]
+            "raw_documentai_json_path": raw_json_path,
+        }
+        write_normalized_json(out_json_path, normalized)
+        print(f"✅ Đã lưu JSON chuẩn: {out_json_path}")
 
-        os.remove(pdf_path)
+        # Không còn push lên Google Sheet; để file JSON cho bước kế tiếp dùng
+        try:
+            os.remove(pdf_path)
+        except Exception:
+            pass
         return True
 
     except GoogleAPICallError as api_error:
@@ -178,13 +183,12 @@ def process_file(pdf_path):
         print(f"❌ Lỗi khi xử lý {pdf_path}: {e}")
     return False
 
+# ---------- Entry ----------
 if __name__ == "__main__":
-    input_dir = "outputs"
-    os.makedirs(input_dir, exist_ok=True)
-    files = [f for f in os.listdir(input_dir) if f.endswith(".pdf")]
+    os.makedirs(INPUT_DIR, exist_ok=True)
+    files = [f for f in os.listdir(INPUT_DIR) if f.lower().endswith(".pdf")]
     success = 0
     for f in files:
-        path = os.path.join(input_dir, f)
-        if process_file(path):
+        if process_file(os.path.join(INPUT_DIR, f)):
             success += 1
     print(f"\n📊 Tổng số file đã xử lý thành công: {success}")
