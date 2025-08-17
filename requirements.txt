@@ -1,9 +1,16 @@
-playwright==1.42.0
-gspread==5.12.0
-google-auth==2.29.0
-google-auth-oauthlib==1.2.0
-google-api-core==2.18.0
-google-cloud-documentai==2.20.0
-requests==2.31.0
-beautifulsoup4==4.12.3
-google-api-python-client
+# --- Core crawling / automation ---
+playwright>=1.44
+
+# --- App UI & data handling ---
+streamlit>=1.36
+pandas>=2.0
+
+# --- Google Document AI (giữ vì bạn vẫn dùng) ---
+google-cloud-documentai>=2.20.0
+google-api-core>=2.18.0
+google-auth>=2.29.0
+protobuf>=4.25.3
+
+# --- Optional (nếu còn dùng chỗ nào ngoài Playwright) ---
+requests>=2.31.0
+beautifulsoup4>=4.12.3
