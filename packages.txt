@@ -1,0 +1,16 @@
+libnss3
+libxkbcommon0
+libgtk-3-0
+libdrm2
+libgbm1
+libasound2
+libxcomposite1
+libxdamage1
+libxrandr2
+libfontconfig1
+libx11-xcb1
+libxshmfence1
+libxfixes3
+libpango-1.0-0
+libpangocairo-1.0-0
+libatspi2.0-0
